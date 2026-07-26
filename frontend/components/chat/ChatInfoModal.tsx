@@ -5,6 +5,7 @@ import Avatar from "@/components/Avatar";
 import Modal from "@/components/Modal";
 import { ApiError, useApp } from "@/lib/store";
 import { DISAPPEARING_OPTIONS, formatDisappearingDuration, formatLastSeen } from "@/lib/format";
+import { useTicker } from "@/lib/useTicker";
 import type { Conversation } from "@/lib/types";
 
 interface Props {
@@ -19,6 +20,7 @@ export default function ChatInfoModal({ conversation, onClose, onAddMembers, onL
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(conversation.name || "");
   const [busy, setBusy] = useState(false);
+  useTicker();
 
   if (!user) return null;
   const me = conversation.participants.find((p) => p.user.id === user.id);

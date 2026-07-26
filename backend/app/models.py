@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     Boolean,
     Column,
-    DateTime,
     Enum,
     ForeignKey,
     Integer,
@@ -15,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from .database import Base
+from .database import Base, UTCDateTime
 
 
 def gen_uuid() -> str:
@@ -50,8 +49,8 @@ class User(Base):
     avatar_emoji = Column(String, default="🙂")
     password_hash = Column(String, nullable=False)
     is_online = Column(Boolean, default=False)
-    last_seen_at = Column(DateTime, default=now)
-    created_at = Column(DateTime, default=now)
+    last_seen_at = Column(UTCDateTime, default=now)
+    created_at = Column(UTCDateTime, default=now)
 
     # Privacy settings (mocked but functional — enforced server-side, see routers)
     read_receipts_enabled = Column(Boolean, default=True)
@@ -75,8 +74,8 @@ class Session(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     token = Column(String, unique=True, index=True, default=gen_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=now)
-    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(UTCDateTime, default=now)
+    expires_at = Column(UTCDateTime, nullable=True)
 
     user = relationship("User", back_populates="sessions")
 
@@ -90,7 +89,7 @@ class Contact(Base):
     contact_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     nickname = Column(String, nullable=True)
     is_blocked = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=now)
+    created_at = Column(UTCDateTime, default=now)
 
     owner = relationship("User", foreign_keys=[owner_id])
     contact_user = relationship("User", foreign_keys=[contact_user_id])
@@ -106,8 +105,8 @@ class Conversation(Base):
     avatar_emoji = Column(String, default="👥")
     created_by = Column(String, ForeignKey("users.id"), nullable=True)
     disappearing_seconds = Column(Integer, default=0)  # 0 = off
-    created_at = Column(DateTime, default=now)
-    updated_at = Column(DateTime, default=now)  # bumped on new message, for sorting
+    created_at = Column(UTCDateTime, default=now)
+    updated_at = Column(UTCDateTime, default=now)  # bumped on new message, for sorting
 
     participants = relationship(
         "ConversationParticipant", back_populates="conversation", cascade="all, delete-orphan"
@@ -128,8 +127,8 @@ class ConversationParticipant(Base):
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     is_admin = Column(Boolean, default=False)
-    joined_at = Column(DateTime, default=now)
-    last_read_at = Column(DateTime, nullable=True)
+    joined_at = Column(UTCDateTime, default=now)
+    last_read_at = Column(UTCDateTime, nullable=True)
     archived = Column(Boolean, default=False)
     muted = Column(Boolean, default=False)
 
@@ -152,10 +151,10 @@ class Message(Base):
     is_system = Column(Boolean, default=False)  # "X added Y" events
     is_edited = Column(Boolean, default=False)
     is_forwarded = Column(Boolean, default=False)
-    pinned_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=now)
-    edited_at = Column(DateTime, nullable=True)
-    expires_at = Column(DateTime, nullable=True)  # disappearing messages
+    pinned_at = Column(UTCDateTime, nullable=True)
+    created_at = Column(UTCDateTime, default=now)
+    edited_at = Column(UTCDateTime, nullable=True)
+    expires_at = Column(UTCDateTime, nullable=True)  # disappearing messages
 
     sender = relationship("User", back_populates="sent_messages")
     conversation = relationship("Conversation", back_populates="messages")
@@ -178,7 +177,7 @@ class MessageStatus(Base):
     message_id = Column(String, ForeignKey("messages.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)  # recipient
     status = Column(Enum(MessageStatusEnum), default=MessageStatusEnum.sent)
-    updated_at = Column(DateTime, default=now)
+    updated_at = Column(UTCDateTime, default=now)
 
     message = relationship("Message", back_populates="statuses")
     user = relationship("User")
@@ -192,7 +191,7 @@ class MessageReaction(Base):
     message_id = Column(String, ForeignKey("messages.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     emoji = Column(String, nullable=False)
-    created_at = Column(DateTime, default=now)
+    created_at = Column(UTCDateTime, default=now)
 
     message = relationship("Message", back_populates="reactions")
     user = relationship("User")

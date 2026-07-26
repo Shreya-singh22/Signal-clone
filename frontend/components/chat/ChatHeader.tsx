@@ -4,6 +4,7 @@ import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/format";
 import { useApp } from "@/lib/store";
+import { useTicker } from "@/lib/useTicker";
 import type { Conversation, User } from "@/lib/types";
 
 interface Props {
@@ -29,6 +30,7 @@ export default function ChatHeader({
 }: Props) {
   const { archiveConversation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+  useTicker();
   const other =
     conversation.type === "direct"
       ? conversation.participants.find((p) => p.user.id !== currentUser.id)?.user
