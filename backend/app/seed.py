@@ -1,8 +1,11 @@
 """Seed the SQLite database with demo users, contacts, conversations and messages.
 
 Run with: python -m app.seed
+Or, to skip seeding when the DB already has data (safe on every container
+boot against a persistent disk): python -m app.seed --if-empty
 """
 
+import sys
 from datetime import datetime, timedelta, timezone
 
 from .database import Base, SessionLocal, engine
@@ -26,7 +29,15 @@ def t(minutes_ago: int) -> datetime:
     return NOW - timedelta(minutes=minutes_ago)
 
 
-def run():
+def run(if_empty: bool = False):
+    Base.metadata.create_all(bind=engine)
+    if if_empty:
+        db = SessionLocal()
+        has_data = db.query(User).first() is not None
+        db.close()
+        if has_data:
+            print("Database already has data, skipping seed (--if-empty).")
+            return
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -221,4 +232,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    run(if_empty="--if-empty" in sys.argv)

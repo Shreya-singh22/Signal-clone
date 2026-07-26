@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: signal-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:////var/data/signam.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+    disk:
+      name: signal-data
+      mountPath: /var/data
+      sizeGB: 1

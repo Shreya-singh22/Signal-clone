@@ -119,6 +119,13 @@ username), or go through **Create an account** to register a brand-new one
 (phone number → mocked OTP, auto-filled for convenience → profile/avatar →
 password).
 
+### 3. Deploying it live
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions to get a
+real hosted link (Render for the backend, Vercel for the frontend). A
+`render.yaml` blueprint is included so the backend deploy is close to
+one-click.
+
 ---
 
 ## Architecture overview
