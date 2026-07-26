@@ -196,6 +196,11 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
         isTyping={typingUserIds.length > 0}
         onOpenInfo={onOpenInfo}
         onArchived={onArchived}
+        onDeleted={onArchived}
+        onSelectMessages={() => {
+          setSelectMode(true);
+          setSelectedIds(new Set());
+        }}
         onToggleSearch={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
         searchOpen={searchOpen}
         pushToast={pushToast}

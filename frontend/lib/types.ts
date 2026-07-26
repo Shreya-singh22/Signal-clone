@@ -83,4 +83,6 @@ export interface Conversation {
   unread_count: number;
   archived: boolean;
   muted: boolean;
+  pinned: boolean;
+  marked_unread: boolean;
 }

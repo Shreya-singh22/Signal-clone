@@ -131,6 +131,8 @@ class ConversationParticipant(Base):
     last_read_at = Column(UTCDateTime, nullable=True)
     archived = Column(Boolean, default=False)
     muted = Column(Boolean, default=False)
+    pinned = Column(Boolean, default=False)
+    marked_unread = Column(Boolean, default=False)
 
     conversation = relationship("Conversation", back_populates="participants")
     user = relationship("User", back_populates="participations")

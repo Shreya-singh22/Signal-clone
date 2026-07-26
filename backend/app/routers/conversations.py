@@ -64,7 +64,7 @@ def _conversation_out(
         .order_by(Message.created_at.desc())
         .first()
     )
-    pinned = (
+    pinned_messages_rows = (
         db.query(Message)
         .filter(Message.conversation_id == conv.id, Message.pinned_at.isnot(None))
         .order_by(Message.pinned_at.desc())
@@ -102,10 +102,12 @@ def _conversation_out(
         updated_at=conv.updated_at,
         participants=[schemas.ParticipantOut.model_validate(p) for p in participants],
         last_message=_message_out(last_message, recipient_count) if last_message else None,
-        pinned_messages=[_message_out(m, recipient_count) for m in pinned],
+        pinned_messages=[_message_out(m, recipient_count) for m in pinned_messages_rows],
         unread_count=unread_count,
         archived=bool(me.archived) if me else False,
         muted=bool(me.muted) if me else False,
+        pinned=bool(me.pinned) if me else False,
+        marked_unread=bool(me.marked_unread) if me else False,
     )
 
 
@@ -122,7 +124,11 @@ def list_conversations(
         .order_by(Conversation.updated_at.desc())
         .all()
     )
-    return [_conversation_out(db, c, current_user.id) for c in convs]
+    results = [_conversation_out(db, c, current_user.id) for c in convs]
+    # Pinned conversations float to the top; Python's sort is stable, so the
+    # existing most-recent-activity order is preserved within each group.
+    results.sort(key=lambda r: not r.pinned)
+    return results
 
 
 @router.post("/direct", response_model=schemas.ConversationOut)
@@ -224,6 +230,94 @@ def archive_conversation(
     db.commit()
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     return _conversation_out(db, conv, current_user.id)
+
+
+@router.post("/{conversation_id}/mute", response_model=schemas.ConversationOut)
+def mute_conversation(
+    conversation_id: str,
+    payload: schemas.FlagRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    participant = _require_participant(db, conversation_id, current_user.id)
+    participant.muted = payload.value
+    db.commit()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    return _conversation_out(db, conv, current_user.id)
+
+
+@router.post("/{conversation_id}/pin", response_model=schemas.ConversationOut)
+def pin_conversation(
+    conversation_id: str,
+    payload: schemas.FlagRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    participant = _require_participant(db, conversation_id, current_user.id)
+    participant.pinned = payload.value
+    db.commit()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    return _conversation_out(db, conv, current_user.id)
+
+
+@router.post("/{conversation_id}/mark-unread", response_model=schemas.ConversationOut)
+def mark_conversation_unread(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    participant = _require_participant(db, conversation_id, current_user.id)
+    participant.marked_unread = True
+    db.commit()
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    return _conversation_out(db, conv, current_user.id)
+
+
+@router.get("/{conversation_id}/media", response_model=list[schemas.MessageOut])
+def list_conversation_media(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    _require_participant(db, conversation_id, current_user.id)
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    recipient_count = max(len(conv.participants) - 1, 0)
+    media_messages = (
+        db.query(Message)
+        .filter(
+            Message.conversation_id == conversation_id,
+            Message.attachment_url.isnot(None),
+            Message.is_deleted.is_(False),
+        )
+        .order_by(Message.created_at.desc())
+        .all()
+    )
+    return [_message_out(m, recipient_count) for m in media_messages]
+
+
+@router.delete("/{conversation_id}")
+def delete_conversation(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    # "Delete chat" is delete-for-me, like Signal's own — it removes only the
+    # calling user's participation, never the other side's copy of the chat.
+    # Once nobody is left participating, the conversation (and its messages)
+    # are actually removed rather than left as an orphaned row forever.
+    participant = _require_participant(db, conversation_id, current_user.id)
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    db.delete(participant)
+    db.flush()
+    remaining = (
+        db.query(ConversationParticipant)
+        .filter(ConversationParticipant.conversation_id == conversation_id)
+        .count()
+    )
+    if remaining == 0:
+        db.delete(conv)
+    db.commit()
+    return {"ok": True}
 
 
 def _format_disappearing_duration(seconds: int) -> str:
@@ -412,6 +506,7 @@ async def mark_read(
 ):
     participant = _require_participant(db, conversation_id, current_user.id)
     participant.last_read_at = datetime.now(timezone.utc)
+    participant.marked_unread = False
 
     senders_to_notify: dict[str, list[str]] = {}
     # If the reader has read receipts turned off, we still track their own unread

@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { formatLastSeen } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useTicker } from "@/lib/useTicker";
 import type { Conversation, User } from "@/lib/types";
+import AllMediaModal from "./AllMediaModal";
 
 interface Props {
   conversation: Conversation;
@@ -13,6 +15,8 @@ interface Props {
   isTyping: boolean;
   onOpenInfo: () => void;
   onArchived: () => void;
+  onDeleted: () => void;
+  onSelectMessages: () => void;
   onToggleSearch: () => void;
   searchOpen: boolean;
   pushToast: (title: string, body?: string) => void;
@@ -24,17 +28,31 @@ export default function ChatHeader({
   isTyping,
   onOpenInfo,
   onArchived,
+  onDeleted,
+  onSelectMessages,
   onToggleSearch,
   searchOpen,
   pushToast,
 }: Props) {
-  const { archiveConversation } = useApp();
+  const {
+    contacts,
+    archiveConversation,
+    muteConversation,
+    pinConversation,
+    markConversationUnread,
+    deleteConversation,
+    blockUser,
+    unblockUser,
+  } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showAllMedia, setShowAllMedia] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   useTicker();
   const other =
     conversation.type === "direct"
       ? conversation.participants.find((p) => p.user.id !== currentUser.id)?.user
       : undefined;
+  const isBlocked = !!other && contacts.find((c) => c.user.id === other.id)?.is_blocked;
 
   let subtitle: string;
   if (isTyping) {
@@ -60,6 +78,56 @@ export default function ChatHeader({
     }
   }
 
+  async function toggleMute() {
+    const next = !conversation.muted;
+    try {
+      await muteConversation(conversation.id, next);
+      pushToast(next ? "Notifications muted" : "Notifications unmuted");
+    } catch {
+      pushToast("Couldn't update this chat");
+    }
+  }
+
+  async function togglePin() {
+    const next = !conversation.pinned;
+    try {
+      await pinConversation(conversation.id, next);
+      pushToast(next ? "Chat pinned" : "Chat unpinned");
+    } catch {
+      pushToast("Couldn't update this chat");
+    }
+  }
+
+  async function handleMarkUnread() {
+    try {
+      await markConversationUnread(conversation.id);
+      onArchived(); // reuse the "back to list" callback — same behavior we want here
+    } catch {
+      pushToast("Couldn't mark as unread");
+    }
+  }
+
+  async function toggleBlock() {
+    if (!other) return;
+    try {
+      if (isBlocked) {
+        await unblockUser(other.id);
+        pushToast(`Unblocked ${other.display_name}`);
+      } else {
+        await blockUser(other.id);
+        pushToast(`Blocked ${other.display_name}`, "They can no longer message you.");
+      }
+    } catch {
+      pushToast("Couldn't update block status");
+    }
+  }
+
+  async function handleDelete() {
+    await deleteConversation(conversation.id);
+    pushToast("Chat deleted");
+    onDeleted();
+  }
+
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
       <button onClick={onOpenInfo} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition">
@@ -72,8 +140,22 @@ export default function ChatHeader({
           online={other?.is_online}
         />
         <div className="min-w-0 text-left">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate flex items-center gap-1.5">
             {conversation.name || "Unknown"}
+            {conversation.pinned && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--color-text-secondary)" className="shrink-0">
+                <path d="M16 3l5 5-5.5 2L13 13l-2 8-2-2 3-8-3.5-3.5L3 10l5-5 3.5 3.5L16 3z" />
+              </svg>
+            )}
+            {conversation.muted && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" className="shrink-0">
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                <path d="M18.63 13A17.89 17.89 0 0 1 18 8" />
+                <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+                <path d="M18 8a6 6 0 0 0-9.33-5" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            )}
           </p>
           <p className={`text-xs truncate ${isTyping ? "text-[var(--color-signal-blue)]" : "text-[var(--color-text-secondary)]"}`}>
             {subtitle}
@@ -130,48 +212,51 @@ export default function ChatHeader({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-11 z-20 w-56 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 animate-fade-in-up">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onOpenInfo();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  {conversation.type === "group" ? "Group info" : "Chat details"}
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    comingSoon("Mute notifications");
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  Mute notifications
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onOpenInfo();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  Disappearing messages
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    toggleArchive();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  {conversation.archived ? "Unarchive chat" : "Archive chat"}
-                </button>
+              <div className="absolute right-0 top-11 z-20 w-60 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 animate-fade-in-up">
+                <MenuItem onClick={() => { setMenuOpen(false); onOpenInfo(); }} label="Disappearing messages" />
+                <MenuItem onClick={() => { setMenuOpen(false); toggleMute(); }} label={conversation.muted ? "Unmute notifications" : "Mute notifications"} />
+                <MenuItem onClick={() => { setMenuOpen(false); onOpenInfo(); }} label="Chat settings" />
+                <MenuItem onClick={() => { setMenuOpen(false); setShowAllMedia(true); }} label="All media" />
+                <div className="my-1.5 border-t border-[var(--color-border)]" />
+                <MenuItem onClick={() => { setMenuOpen(false); onSelectMessages(); }} label="Select messages" />
+                <MenuItem onClick={() => { setMenuOpen(false); handleMarkUnread(); }} label="Mark as unread" />
+                <MenuItem onClick={() => { setMenuOpen(false); togglePin(); }} label={conversation.pinned ? "Unpin chat" : "Pin chat"} />
+                <MenuItem onClick={() => { setMenuOpen(false); toggleArchive(); }} label={conversation.archived ? "Unarchive chat" : "Archive chat"} />
+                {conversation.type === "direct" && other && (
+                  <MenuItem onClick={() => { setMenuOpen(false); toggleBlock(); }} label={isBlocked ? `Unblock ${other.display_name}` : "Block"} />
+                )}
+                <div className="my-1.5 border-t border-[var(--color-border)]" />
+                <MenuItem onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} label="Delete" danger />
               </div>
             </>
           )}
         </div>
       </div>
+
+      {showAllMedia && <AllMediaModal conversationId={conversation.id} onClose={() => setShowAllMedia(false)} />}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this chat?"
+          message="This deletes the conversation for you only — the other participant(s) keep their copy. This can't be undone."
+          confirmLabel="Delete"
+          danger
+          onConfirm={handleDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function MenuItem({ onClick, label, danger }: { onClick: () => void; label: string; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition ${
+        danger ? "text-red-500" : ""
+      }`}
+    >
+      {label}
+    </button>
   );
 }

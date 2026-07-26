@@ -123,6 +123,10 @@ interface AppContextValue {
   addContact: (payload: { username?: string; phone_number?: string }) => Promise<Contact>;
   updateConversation: (id: string, payload: { name?: string; disappearing_seconds?: number }) => Promise<void>;
   archiveConversation: (id: string, archived: boolean) => Promise<void>;
+  muteConversation: (id: string, value: boolean) => Promise<void>;
+  pinConversation: (id: string, value: boolean) => Promise<void>;
+  markConversationUnread: (id: string) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
   addMember: (conversationId: string, userId: string) => Promise<void>;
   removeMember: (conversationId: string, userId: string) => Promise<void>;
   updateProfile: (payload: Partial<Pick<User, "display_name" | "about" | "avatar_color" | "avatar_emoji">>) => Promise<void>;
@@ -325,8 +329,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (!message.is_system) {
             const senderIsMe = me && message.sender_id === me.id;
             if (!senderIsMe && activeConversationIdRef.current !== message.conversation_id) {
-              if (me?.notifications_enabled) {
-                const conv = conversationsRef.current.find((c) => c.id === message.conversation_id);
+              const conv = conversationsRef.current.find((c) => c.id === message.conversation_id);
+              if (me?.notifications_enabled && !conv?.muted) {
                 const senderP = conv?.participants.find((p) => p.user.id === message.sender_id);
                 pushToast(
                   senderP?.user.display_name || "New message",
@@ -622,6 +626,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...updated, unread_count: c.unread_count } : c)));
   }, []);
 
+  const muteConversation = useCallback(async (id: string, value: boolean) => {
+    const updated = await api.muteConversation(id, value);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...updated, unread_count: c.unread_count } : c)));
+  }, []);
+
+  const pinConversation = useCallback(async (id: string, value: boolean) => {
+    const updated = await api.pinConversation(id, value);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...updated, unread_count: c.unread_count } : c)));
+  }, []);
+
+  const markConversationUnread = useCallback(async (id: string) => {
+    const updated = await api.markConversationUnread(id);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...updated, unread_count: c.unread_count } : c)));
+  }, []);
+
+  const deleteConversation = useCallback(async (id: string) => {
+    await api.deleteConversation(id);
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
   const addMember = useCallback(async (conversationId: string, userId: string) => {
     const updated = await api.addMember(conversationId, userId);
     setConversations((prev) =>
@@ -711,6 +735,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addContact,
       updateConversation,
       archiveConversation,
+      muteConversation,
+      pinConversation,
+      markConversationUnread,
+      deleteConversation,
       addMember,
       removeMember,
       updateProfile,
@@ -750,6 +778,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addContact,
       updateConversation,
       archiveConversation,
+      muteConversation,
+      pinConversation,
+      markConversationUnread,
+      deleteConversation,
       addMember,
       removeMember,
       updateProfile,

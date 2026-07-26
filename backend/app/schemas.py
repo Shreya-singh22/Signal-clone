@@ -192,6 +192,8 @@ class ConversationOut(BaseModel):
     unread_count: int = 0
     archived: bool = False
     muted: bool = False
+    pinned: bool = False
+    marked_unread: bool = False
 
     class Config:
         from_attributes = True
@@ -199,6 +201,10 @@ class ConversationOut(BaseModel):
 
 class ArchiveConversationRequest(BaseModel):
     archived: bool
+
+
+class FlagRequest(BaseModel):
+    value: bool
 
 
 class SendMessageRequest(BaseModel):

@@ -121,6 +121,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ archived }),
     }),
+  muteConversation: (conversationId: string, value: boolean) =>
+    request<Conversation>(`/api/conversations/${conversationId}/mute`, {
+      method: "POST",
+      body: JSON.stringify({ value }),
+    }),
+  pinConversation: (conversationId: string, value: boolean) =>
+    request<Conversation>(`/api/conversations/${conversationId}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ value }),
+    }),
+  markConversationUnread: (conversationId: string) =>
+    request<Conversation>(`/api/conversations/${conversationId}/mark-unread`, { method: "POST" }),
+  deleteConversation: (conversationId: string) =>
+    request(`/api/conversations/${conversationId}`, { method: "DELETE" }),
+  conversationMedia: (conversationId: string) =>
+    request<Message[]>(`/api/conversations/${conversationId}/media`),
 
   listMessages: (conversationId: string, before?: string) =>
     request<Message[]>(

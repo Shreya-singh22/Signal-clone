@@ -30,7 +30,7 @@ export default function ConversationListPanel({
 
   const filtered = useMemo(() => {
     let list = conversations.filter((c) => (view === "archived" ? c.archived : !c.archived));
-    if (filter === "unread") list = list.filter((c) => c.unread_count > 0);
+    if (filter === "unread") list = list.filter((c) => c.unread_count > 0 || c.marked_unread);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter((c) => {
@@ -41,7 +41,10 @@ export default function ConversationListPanel({
         );
       });
     }
-    return list;
+    // Pinned conversations float to the top; the array coming in is already
+    // most-recent-first, and Array.prototype.sort is stable, so that order
+    // survives within each group.
+    return [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }, [conversations, filter, query, view]);
 
   // Contacts you haven't started a direct conversation with yet, matching the search —
