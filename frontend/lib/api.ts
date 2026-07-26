@@ -100,6 +100,11 @@ export const api = {
     }),
   markRead: (conversationId: string) =>
     request(`/api/conversations/${conversationId}/read`, { method: "POST" }),
+  archiveConversation: (conversationId: string, archived: boolean) =>
+    request<Conversation>(`/api/conversations/${conversationId}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ archived }),
+    }),
 
   listMessages: (conversationId: string, before?: string) =>
     request<Message[]>(

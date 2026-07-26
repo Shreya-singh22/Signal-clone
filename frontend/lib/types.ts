@@ -58,4 +58,6 @@ export interface Conversation {
   participants: Participant[];
   last_message?: Message | null;
   unread_count: number;
+  archived: boolean;
+  muted: boolean;
 }

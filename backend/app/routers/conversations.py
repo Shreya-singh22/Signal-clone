@@ -95,6 +95,8 @@ def _conversation_out(
         participants=[schemas.ParticipantOut.model_validate(p) for p in participants],
         last_message=_message_out(last_message, recipient_count) if last_message else None,
         unread_count=unread_count,
+        archived=bool(me.archived) if me else False,
+        muted=bool(me.muted) if me else False,
     )
 
 
@@ -195,6 +197,22 @@ def get_conversation(
     db: DbSession = Depends(get_db),
 ):
     _require_participant(db, conversation_id, current_user.id)
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    return _conversation_out(db, conv, current_user.id)
+
+
+@router.post("/{conversation_id}/archive", response_model=schemas.ConversationOut)
+def archive_conversation(
+    conversation_id: str,
+    payload: schemas.ArchiveConversationRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    # Archiving is per-user (lives on the participant row), not a shared conversation
+    # property — one person archiving a chat shouldn't hide it for everyone else in it.
+    participant = _require_participant(db, conversation_id, current_user.id)
+    participant.archived = payload.archived
+    db.commit()
     conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     return _conversation_out(db, conv, current_user.id)
 

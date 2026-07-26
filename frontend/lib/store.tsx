@@ -117,6 +117,7 @@ interface AppContextValue {
   createGroup: (name: string, memberIds: string[]) => Promise<Conversation>;
   addContact: (payload: { username?: string; phone_number?: string }) => Promise<Contact>;
   updateConversation: (id: string, payload: { name?: string; disappearing_seconds?: number }) => Promise<void>;
+  archiveConversation: (id: string, archived: boolean) => Promise<void>;
   addMember: (conversationId: string, userId: string) => Promise<void>;
   removeMember: (conversationId: string, userId: string) => Promise<void>;
   updateProfile: (payload: Partial<Pick<User, "display_name" | "about" | "avatar_color" | "avatar_emoji">>) => Promise<void>;
@@ -296,6 +297,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               last_message: message,
               updated_at: message.created_at,
               unread_count: isActive || isMine ? conv.unread_count : conv.unread_count + 1,
+              // The backend un-archives a chat for recipients when a new message lands in it.
+              archived: isMine ? conv.archived : false,
             };
             const rest = prev.filter((_, i) => i !== idx);
             return [updated, ...rest];
@@ -527,6 +530,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const archiveConversation = useCallback(async (id: string, archived: boolean) => {
+    const updated = await api.archiveConversation(id, archived);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...updated, unread_count: c.unread_count } : c)));
+  }, []);
+
   const addMember = useCallback(async (conversationId: string, userId: string) => {
     const updated = await api.addMember(conversationId, userId);
     setConversations((prev) =>
@@ -578,6 +586,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createGroup,
       addContact,
       updateConversation,
+      archiveConversation,
       addMember,
       removeMember,
       updateProfile,
@@ -609,6 +618,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createGroup,
       addContact,
       updateConversation,
+      archiveConversation,
       addMember,
       removeMember,
       updateProfile,

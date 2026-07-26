@@ -132,6 +132,9 @@ async def send_message(
     for p in other_participants:
         st = MessageStatusEnum.delivered if manager.is_online(p.user_id) else MessageStatusEnum.sent
         db.add(MessageStatus(message_id=message.id, user_id=p.user_id, status=st))
+        # A new message should surface an archived chat again, like Signal does —
+        # otherwise the recipient could silently miss it sitting in Archive.
+        p.archived = False
 
     conv.updated_at = datetime.now(timezone.utc)
     db.commit()

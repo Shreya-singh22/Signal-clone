@@ -142,9 +142,15 @@ class ConversationOut(BaseModel):
     participants: list[ParticipantOut]
     last_message: Optional[MessageOut] = None
     unread_count: int = 0
+    archived: bool = False
+    muted: bool = False
 
     class Config:
         from_attributes = True
+
+
+class ArchiveConversationRequest(BaseModel):
+    archived: bool
 
 
 class SendMessageRequest(BaseModel):

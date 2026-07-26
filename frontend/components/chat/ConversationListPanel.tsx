@@ -24,10 +24,12 @@ export default function ConversationListPanel({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [view, setView] = useState<"chats" | "archived">("chats");
   const [startingContactId, setStartingContactId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    let list = conversations;
+    let list = conversations.filter((c) => (view === "archived" ? c.archived : !c.archived));
     if (filter === "unread") list = list.filter((c) => c.unread_count > 0);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -40,12 +42,12 @@ export default function ConversationListPanel({
       });
     }
     return list;
-  }, [conversations, filter, query]);
+  }, [conversations, filter, query, view]);
 
   // Contacts you haven't started a direct conversation with yet, matching the search —
   // surfaces people from your address book, not just existing chats.
   const matchingContacts = useMemo(() => {
-    if (!query.trim() || !user) return [];
+    if (!query.trim() || !user || view !== "chats") return [];
     const q = query.trim().toLowerCase();
     const existingDirectUserIds = new Set(
       conversations
@@ -57,7 +59,7 @@ export default function ConversationListPanel({
         !existingDirectUserIds.has(c.user.id) &&
         (c.user.display_name.toLowerCase().includes(q) || c.user.username.toLowerCase().includes(q))
     );
-  }, [contacts, query, conversations, user]);
+  }, [contacts, query, conversations, user, view]);
 
   async function startChatWithContact(contactUserId: string) {
     setStartingContactId(contactUserId);
@@ -77,51 +79,128 @@ export default function ConversationListPanel({
   return (
     <div className="flex flex-col w-full sm:w-[360px] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg)] h-full">
       <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Chats</h1>
-        <div className="relative">
+        {view === "archived" ? (
           <button
-            onClick={() => setMenuOpen((o) => !o)}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] transition text-[var(--color-text-secondary)]"
-            title="New chat"
+            onClick={() => setView("chats")}
+            className="flex items-center gap-1.5 text-xl font-bold text-[var(--color-text-primary)]"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
             </svg>
+            Archived Chats
           </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-11 z-20 w-52 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 animate-fade-in-up">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onNewChat();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  New message
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onNewGroup();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  New group
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onAddContact();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
-                >
-                  New contact
-                </button>
-              </div>
-            </>
+        ) : (
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Chats</h1>
+        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] transition text-[var(--color-text-secondary)]"
+              title="New chat"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-11 z-20 w-52 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 animate-fade-in-up">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onNewChat();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                  >
+                    New message
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onNewGroup();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                  >
+                    New group
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAddContact();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                  >
+                    New contact
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {view === "chats" && (
+            <div className="relative">
+              <button
+                onClick={() => setMoreMenuOpen((o) => !o)}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] transition text-[var(--color-text-secondary)]"
+                title="More"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="5" cy="12" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="19" cy="12" r="1.8" />
+                </svg>
+              </button>
+              {moreMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMoreMenuOpen(false)} />
+                  <div className="absolute right-0 top-11 z-20 w-56 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 animate-fade-in-up">
+                    <button
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        setView("archived");
+                      }}
+                      className="w-full flex items-center gap-2.5 text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="5" rx="1" />
+                        <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9" />
+                        <path d="M10 13h4" />
+                      </svg>
+                      View Archive
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        pushToast("Chat folders coming soon", "Organize chats into custom folders — not in this demo yet.");
+                      }}
+                      className="w-full flex items-center gap-2.5 text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+                        <path d="M12 11v4" />
+                        <path d="M10 13h4" />
+                      </svg>
+                      Add chat folder
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        pushToast("Notification profiles coming soon", "Scheduled do-not-disturb profiles aren't in this demo yet.");
+                      }}
+                      className="w-full flex items-center gap-2.5 text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+                      </svg>
+                      Notification profile
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -160,7 +239,11 @@ export default function ConversationListPanel({
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {filtered.length === 0 && matchingContacts.length === 0 ? (
           <div className="text-center text-sm text-[var(--color-text-secondary)] mt-10 px-6">
-            {query ? "No chats or contacts match your search." : "No conversations yet. Start one!"}
+            {view === "archived"
+              ? "No archived chats."
+              : query
+                ? "No chats or contacts match your search."
+                : "No conversations yet. Start one!"}
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">

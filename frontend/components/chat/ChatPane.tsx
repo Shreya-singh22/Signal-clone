@@ -12,9 +12,10 @@ import Composer from "./Composer";
 interface Props {
   conversationId: string;
   onOpenInfo: () => void;
+  onArchived: () => void;
 }
 
-export default function ChatPane({ conversationId, onOpenInfo }: Props) {
+export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Props) {
   const {
     user,
     conversations,
@@ -89,6 +90,7 @@ export default function ChatPane({ conversationId, onOpenInfo }: Props) {
         currentUser={user}
         isTyping={typingUserIds.length > 0}
         onOpenInfo={onOpenInfo}
+        onArchived={onArchived}
         pushToast={pushToast}
       />
 

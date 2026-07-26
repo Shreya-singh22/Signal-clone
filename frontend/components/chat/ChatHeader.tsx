@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/format";
+import { useApp } from "@/lib/store";
 import type { Conversation, User } from "@/lib/types";
 
 interface Props {
@@ -10,10 +11,19 @@ interface Props {
   currentUser: User;
   isTyping: boolean;
   onOpenInfo: () => void;
+  onArchived: () => void;
   pushToast: (title: string, body?: string) => void;
 }
 
-export default function ChatHeader({ conversation, currentUser, isTyping, onOpenInfo, pushToast }: Props) {
+export default function ChatHeader({
+  conversation,
+  currentUser,
+  isTyping,
+  onOpenInfo,
+  onArchived,
+  pushToast,
+}: Props) {
+  const { archiveConversation } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const other =
     conversation.type === "direct"
@@ -31,6 +41,17 @@ export default function ChatHeader({ conversation, currentUser, isTyping, onOpen
 
   function comingSoon(feature: string) {
     pushToast(`${feature} coming soon`, "This feature isn't part of the Signam demo yet.");
+  }
+
+  async function toggleArchive() {
+    const nextArchived = !conversation.archived;
+    try {
+      await archiveConversation(conversation.id, nextArchived);
+      pushToast(nextArchived ? "Chat archived" : "Chat unarchived");
+      if (nextArchived) onArchived();
+    } catch {
+      pushToast("Couldn't update this chat");
+    }
   }
 
   return (
@@ -116,6 +137,15 @@ export default function ChatHeader({ conversation, currentUser, isTyping, onOpen
                   className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
                 >
                   Disappearing messages
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    toggleArchive();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                >
+                  {conversation.archived ? "Unarchive chat" : "Archive chat"}
                 </button>
               </div>
             </>

@@ -96,6 +96,10 @@ export default function ChatShell() {
                   key={selectedConversation.id}
                   conversationId={selectedConversation.id}
                   onOpenInfo={() => setModal({ type: "chatInfo" })}
+                  onArchived={() => {
+                    setSelectedId(null);
+                    setMobileListVisible(true);
+                  }}
                 />
               </div>
             ) : (

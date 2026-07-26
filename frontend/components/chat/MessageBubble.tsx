@@ -56,9 +56,15 @@ export default function MessageBubble({
     acc[r.emoji] = (acc[r.emoji] || 0) + 1;
     return acc;
   }, {});
+  const hasReactions = Object.keys(reactionCounts).length > 0;
 
   return (
-    <div className={`group flex flex-col ${isOwn ? "items-end" : "items-start"} px-4 sm:px-8 mb-0.5`}>
+    <div
+      className={`group flex flex-col ${isOwn ? "items-end" : "items-start"} px-4 sm:px-8 ${
+        hasReactions ? "mb-3" : "mb-0.5"
+      }`}
+    >
+
       {showSender && !isOwn && (
         <span className="text-xs font-semibold ml-1 mb-0.5" style={{ color: senderColor }}>
           {senderName}
@@ -143,15 +149,19 @@ export default function MessageBubble({
           </div>
 
           {Object.keys(reactionCounts).length > 0 && (
-            <div className={`flex gap-0.5 -mt-2 ${isOwn ? "justify-end mr-1" : "ml-1"}`}>
-              <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-full px-1.5 py-0.5 text-[11px] flex items-center gap-0.5 shadow-sm">
-                {Object.entries(reactionCounts).map(([emoji, count]) => (
-                  <span key={emoji}>
-                    {emoji}
-                    {count > 1 ? count : ""}
-                  </span>
-                ))}
-              </div>
+            <div
+              className={`absolute -bottom-2.5 flex items-center gap-1 bg-[var(--color-bg-secondary)] rounded-full pl-1 pr-1.5 py-0.5 shadow-md ${
+                isOwn ? "right-1" : "left-1"
+              }`}
+            >
+              {Object.entries(reactionCounts).map(([emoji, count]) => (
+                <span key={emoji} className="flex items-center gap-0.5 leading-none">
+                  <span className="text-base">{emoji}</span>
+                  {count > 1 && (
+                    <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">{count}</span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>
