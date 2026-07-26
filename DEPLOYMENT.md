@@ -25,10 +25,10 @@ one click:
 1. Go to [render.com](https://render.com) → sign in with GitHub.
 2. **New** → **Blueprint** → pick your `signal-messenger` repo.
 3. Render reads `render.yaml` and proposes a `signal-backend` web service
-   with a 1GB persistent disk mounted at `/var/data`. Click **Apply**.
+   on the free plan. Click **Apply**.
 4. First boot builds `backend/Dockerfile`, then runs
-   `python -m app.seed --if-empty` (seeds demo data only if the disk is
-   empty — safe on every restart/redeploy) followed by `uvicorn`.
+   `python -m app.seed --if-empty` (seeds demo data if the DB is empty)
+   followed by `uvicorn`.
 5. Once live, note the URL Render gives you, e.g.
    `https://signal-backend-xxxx.onrender.com`. Confirm it's up:
    ```bash
@@ -37,18 +37,15 @@ one click:
    ```
 
 Render supports WebSocket upgrades on every plan, so `wss://` chat and
-typing indicators work without extra config. Uploaded files and the SQLite
-DB persist across redeploys because they live on the mounted disk, not the
-container filesystem.
+typing indicators work without extra config.
 
-If you'd rather do it by hand instead of the blueprint (or use Railway/Fly
-instead of Render), the two things that matter are:
-- Set `DATABASE_URL=sqlite:////<mounted-disk-path>/signam.db`
-- Set `UPLOAD_DIR=/<mounted-disk-path>/uploads`
-
-Both env vars are optional — omit them and it falls back to a path inside
-the container, which works but loses data on every redeploy since it's not
-on a persistent volume.
+**Note:** persistent disks aren't available on Render's free tier, so the
+SQLite DB and uploaded files live in the container filesystem and reset on
+every redeploy (and re-seed automatically via `--if-empty`). Fine for a
+demo/assignment. If you upgrade to a paid plan later and want data to
+survive redeploys, add a disk back to `render.yaml` and set:
+- `DATABASE_URL=sqlite:////<mounted-disk-path>/signam.db`
+- `UPLOAD_DIR=/<mounted-disk-path>/uploads`
 
 ## 2. Frontend → Vercel
 
