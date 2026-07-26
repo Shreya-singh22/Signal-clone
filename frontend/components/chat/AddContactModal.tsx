@@ -99,7 +99,7 @@ export default function AddContactModal({ onClose, onMessage }: Props) {
           </button>
         </div>
         <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">
-          They need to already have a Signam account — this demo has no SMS invites.
+          They need to already have a Signal account — this demo has no SMS invites.
         </p>
       </form>
 

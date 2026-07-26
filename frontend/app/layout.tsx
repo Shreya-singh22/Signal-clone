@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Signam",
+  title: "Signal",
   description: "A Signal-inspired messaging experience.",
 };
 

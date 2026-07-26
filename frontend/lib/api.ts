@@ -167,4 +167,10 @@ export const api = {
       body: form,
     });
   },
+
+  searchGifs: (q: string) =>
+    request<{
+      available: boolean;
+      results: { id: string; title: string; url: string; preview_url: string }[];
+    }>(`/api/gifs/search?q=${encodeURIComponent(q)}`),
 };

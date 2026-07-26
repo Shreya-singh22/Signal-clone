@@ -175,7 +175,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
           {tab === "notifications" && (
             <NotificationsTab user={user} updateSettings={updateSettings} pushToast={pushToast} />
           )}
-          {tab === "devices" && <ComingSoon label="Linked devices" description="Pair Signam with a tablet or desktop client — coming soon." />}
+          {tab === "devices" && <ComingSoon label="Linked devices" description="Pair Signal with a tablet or desktop client — coming soon." />}
         </div>
       </div>
     </Modal>

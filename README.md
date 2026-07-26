@@ -1,6 +1,6 @@
-# Signam — a Signal-inspired messenger clone
+# Signal — a Signal-inspired messenger clone
 
-Signam is a full-stack clone of the Signal Messenger experience: registration/onboarding,
+Signal is a full-stack clone of the Signal Messenger experience: registration/onboarding,
 a conversation list, one-on-one and group messaging in real time, typing indicators,
 delivery/read receipts, reactions, replies, attachments, disappearing messages, and a
 Signal-styled UI with light/dark themes.
@@ -30,7 +30,7 @@ in-process WebSocket connection manager.
 ## Project structure
 
 ```
-Signam Clone/
+Signal Clone/
 ├── backend/
 │   └── app/
 │       ├── main.py          # FastAPI app, router wiring, static file mount for uploads

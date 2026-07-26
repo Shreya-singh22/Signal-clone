@@ -64,7 +64,7 @@ export default function ChatShell() {
           <div>
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)] capitalize">{navTab}</h2>
             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              {navTab === "calls" ? "Voice and video calls are" : "Stories are"} coming soon to Signam.
+              {navTab === "calls" ? "Voice and video calls are" : "Stories are"} coming soon to Signal.
             </p>
           </div>
         </div>

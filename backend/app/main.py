@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from . import models
 from .database import Base, SessionLocal, engine
 from .models import User
-from .routers import auth, contacts, conversations, messages, upload, users, ws
+from .routers import auth, contacts, conversations, gifs, messages, upload, users, ws
 from .tasks import disappearing_messages_sweep_loop
 
 Base.metadata.create_all(bind=engine)
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     sweep_task.cancel()
 
 
-app = FastAPI(title="Signam API", lifespan=lifespan)
+app = FastAPI(title="Signal API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,6 +64,7 @@ app.include_router(contacts.router)
 app.include_router(conversations.router)
 app.include_router(messages.router)
 app.include_router(upload.router)
+app.include_router(gifs.router)
 app.include_router(ws.router)
 
 

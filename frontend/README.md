@@ -1,6 +1,6 @@
-# Signam — frontend
+# Signal — frontend
 
-Next.js (App Router) + TypeScript + Tailwind CSS frontend for Signam.
+Next.js (App Router) + TypeScript + Tailwind CSS frontend for Signal.
 
 See the [repository root README](../README.md) for full setup instructions,
 architecture overview, database schema, and API reference.

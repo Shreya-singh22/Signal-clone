@@ -51,6 +51,15 @@ function attachmentSrc(url: string) {
   return url.startsWith("http") ? url : `${API_URL}${url}`;
 }
 
+const EMOJI_ONLY_REGEX = /^(\p{Extended_Pictographic}(\u{FE0F})?|\u{200D})+$/u;
+
+function isStickerContent(content?: string | null): boolean {
+  if (!content) return false;
+  const trimmed = content.trim();
+  if (!trimmed || !EMOJI_ONLY_REGEX.test(trimmed)) return false;
+  return [...trimmed].length <= 6;
+}
+
 export default function MessageBubble({
   message,
   isOwn,
@@ -108,6 +117,16 @@ export default function MessageBubble({
   }, {});
   const hasReactions = Object.keys(reactionCounts).length > 0;
   const isPinned = !!message.pinned_at;
+  // A message that's just one-or-a-few emoji (a "sticker" pick, or any lone
+  // emoji someone sends) renders big with no bubble chrome — same convention
+  // Signal/WhatsApp/iMessage use, and how our sticker picker's sends read as
+  // stickers rather than plain text bubbles.
+  const isSticker =
+    !message.is_deleted &&
+    !message.attachment_url &&
+    !replyToMessage &&
+    !message.is_forwarded &&
+    isStickerContent(message.content);
 
   async function copyText() {
     if (message.content) {
@@ -160,12 +179,14 @@ export default function MessageBubble({
           <div
             onDoubleClick={handleDoubleClick}
             onClick={handleBubbleClick}
-            className={`relative rounded-2xl px-3.5 py-2 ${selectMode ? "cursor-pointer" : ""} ${
-              justReacted ? "animate-bubble-pop" : ""
-            } ${message.status === "failed" ? "animate-shake" : ""} ${
-              isOwn
-                ? "bg-[var(--color-bubble-out)] text-white rounded-br-md"
-                : "bg-[var(--color-bubble-in)] text-[var(--color-text-primary)] rounded-bl-md"
+            className={`relative ${isSticker ? "px-1 py-1 bg-transparent" : "rounded-2xl px-3.5 py-2"} ${
+              selectMode ? "cursor-pointer" : ""
+            } ${justReacted ? "animate-bubble-pop" : ""} ${message.status === "failed" ? "animate-shake" : ""} ${
+              isSticker
+                ? "text-[var(--color-text-primary)]"
+                : isOwn
+                  ? "bg-[var(--color-bubble-out)] text-white rounded-br-md"
+                  : "bg-[var(--color-bubble-in)] text-[var(--color-text-primary)] rounded-bl-md"
             } ${isSelected ? "ring-2 ring-[var(--color-signal-blue)]" : ""}`}
           >
             {message.is_deleted ? (
@@ -242,28 +263,42 @@ export default function MessageBubble({
                   </a>
                 )}
                 {message.content && (
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  <p
+                    className={
+                      isSticker
+                        ? "text-6xl leading-none py-1"
+                        : "text-sm whitespace-pre-wrap break-words"
+                    }
+                  >
+                    {message.content}
+                  </p>
                 )}
               </>
             )}
-            <div className="flex items-center gap-1 mt-0.5 justify-end">
+            <div className={`flex items-center gap-1 mt-0.5 justify-end ${isSticker ? "pr-1" : ""}`}>
               {isPinned && (
                 <svg
                   width="10"
                   height="10"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className={isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}
+                  className={isOwn && !isSticker ? "text-white/70" : "text-[var(--color-text-secondary)]"}
                 >
                   <path d="M16 3l5 5-5.5 2L13 13l-2 8-2-2 3-8-3.5-3.5L3 10l5-5 3.5 3.5L16 3z" />
                 </svg>
               )}
               {message.is_edited && !message.is_deleted && (
-                <span className={`text-[10px] italic ${isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}`}>
+                <span
+                  className={`text-[10px] italic ${
+                    isOwn && !isSticker ? "text-white/70" : "text-[var(--color-text-secondary)]"
+                  }`}
+                >
                   edited
                 </span>
               )}
-              <span className={`text-[10px] ${isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}`}>
+              <span
+                className={`text-[10px] ${isOwn && !isSticker ? "text-white/70" : "text-[var(--color-text-secondary)]"}`}
+              >
                 {formatTime(message.created_at)}
               </span>
               {isOwn && <MessageStatusTicks status={message.status} />}

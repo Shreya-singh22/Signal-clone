@@ -36,7 +36,7 @@ def run():
             username="alice",
             display_name="Alice Johnson",
             phone_number="+919876543201",
-            about="Building Signam ✨",
+            about="Building Signal ✨",
             avatar_color="#2C6BED",
             avatar_emoji="👩‍💻",
         ),
@@ -123,7 +123,7 @@ def run():
 
     # --- Alice & Bob: fully read conversation ---
     ab = make_direct(alice, bob)
-    send(ab, bob, "Hey Alice! Did you check out the new Signam build?", 120, mark_read_by=[alice])
+    send(ab, bob, "Hey Alice! Did you check out the new Signal build?", 120, mark_read_by=[alice])
     send(ab, alice, "Just did — the message bubbles look great 👌", 118, mark_read_by=[bob])
     send(ab, bob, "Right? And the typing indicator feels snappy", 115, mark_read_by=[alice])
     send(ab, alice, "Let's demo it in standup tomorrow", 110, mark_read_by=[bob])
@@ -139,7 +139,7 @@ def run():
 
     # --- Alice & Dave: sent but not yet delivered/read (Dave offline) ---
     ad = make_direct(alice, dave)
-    send(ad, alice, "Dave, welcome to Signam! 🎉", 60, mark_read_by=[dave])
+    send(ad, alice, "Dave, welcome to Signal! 🎉", 60, mark_read_by=[dave])
     msg = send(ad, alice, "Ping me when you're back online", 3)
     db.flush()
     db.query(MessageStatus).filter(MessageStatus.message_id == msg.id).update(

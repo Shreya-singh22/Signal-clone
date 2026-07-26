@@ -19,7 +19,7 @@ export default function Home() {
         <div className="w-14 h-14 rounded-2xl bg-[var(--color-signal-blue)] flex items-center justify-center text-white text-2xl font-bold">
           S
         </div>
-        <p className="text-sm text-[var(--color-text-secondary)]">Loading Signam…</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">Loading Signal…</p>
       </div>
     </div>
   );

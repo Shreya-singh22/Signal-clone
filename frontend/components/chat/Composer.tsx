@@ -1,36 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { api, ApiError } from "@/lib/api";
-import { REACTION_EMOJIS } from "@/lib/format";
+import type { GifResult } from "@/lib/gifs";
 import type { Message } from "@/lib/types";
+import EmojiGifStickerPicker from "./EmojiGifStickerPicker";
 
 interface PendingAttachment {
   file: File;
   previewUrl: string | null;
   isImage: boolean;
 }
-
-const pickerVariants = {
-  hidden: { opacity: 0, scale: 0.9, y: 6 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 320, damping: 28, mass: 1, staggerChildren: 0.012 },
-  },
-  exit: { opacity: 0, scale: 0.95, y: 4, transition: { duration: 0.1 } },
-};
-
-const emojiItemVariants = {
-  hidden: { opacity: 0, scale: 0.3, y: 4 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 500, damping: 15 } },
-};
-
-const QUICK_EMOJIS = ["😀", "😂", "😍", "👍", "🙏", "🎉", "😢", "😮", "🔥", "❤️", ...REACTION_EMOJIS].filter(
-  (v, i, arr) => arr.indexOf(v) === i
-);
 
 interface Props {
   replyTo: Message | null;
@@ -134,6 +115,16 @@ export default function Composer({
   function cancelAttachment() {
     if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
     setPendingAttachment(null);
+  }
+
+  function handlePickSticker(emoji: string) {
+    onSend(emoji);
+    setShowEmoji(false);
+  }
+
+  function handlePickGif(gif: GifResult) {
+    onSend("", { attachment_url: gif.url, attachment_type: "image", attachment_name: gif.title });
+    setShowEmoji(false);
   }
 
   return (
@@ -268,33 +259,15 @@ export default function Composer({
           </div>
           <AnimatePresence>
             {showEmoji && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-                <motion.div
-                  variants={pickerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="absolute bottom-12 right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 w-56"
-                >
-                  {QUICK_EMOJIS.map((emoji) => (
-                    <motion.button
-                      key={emoji}
-                      type="button"
-                      variants={emojiItemVariants}
-                      whileHover={{ scale: 1.2 }}
-                      whileTap={{ scale: 1.4 }}
-                      onClick={() => {
-                        setText((t) => t + emoji);
-                        setShowEmoji(false);
-                      }}
-                      className="text-xl hover:bg-[var(--color-bg-tertiary)] rounded-lg p-1"
-                    >
-                      {emoji}
-                    </motion.button>
-                  ))}
-                </motion.div>
-              </>
+              <EmojiGifStickerPicker
+                onPickEmoji={(emoji) => {
+                  setText((t) => t + emoji);
+                  setShowEmoji(false);
+                }}
+                onPickSticker={handlePickSticker}
+                onPickGif={handlePickGif}
+                onClose={() => setShowEmoji(false)}
+              />
             )}
           </AnimatePresence>
         </div>

@@ -48,7 +48,7 @@ export default function LoginPage() {
           <div className="w-16 h-16 rounded-3xl bg-[var(--color-signal-blue)] flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg shadow-blue-500/20">
             S
           </div>
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Signam</h1>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Signal</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">Simple. Private. Yours.</p>
         </div>
 
@@ -114,7 +114,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-sm text-[var(--color-text-secondary)] mt-6">
-          New to Signam?{" "}
+          New to Signal?{" "}
           <Link href="/register" className="text-[var(--color-signal-blue)] font-medium">
             Create an account
           </Link>

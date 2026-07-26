@@ -46,7 +46,7 @@ export default function ChatHeader({
   }
 
   function comingSoon(feature: string) {
-    pushToast(`${feature} coming soon`, "This feature isn't part of the Signam demo yet.");
+    pushToast(`${feature} coming soon`, "This feature isn't part of the Signal demo yet.");
   }
 
   async function toggleArchive() {
