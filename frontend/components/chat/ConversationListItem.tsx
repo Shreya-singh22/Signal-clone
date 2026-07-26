@@ -7,6 +7,7 @@ interface Props {
   currentUser: User;
   active: boolean;
   onClick: () => void;
+  inPinnedSection?: boolean;
 }
 
 function conversationSubtitle(conversation: Conversation, currentUserId: string): string {
@@ -21,7 +22,13 @@ function conversationSubtitle(conversation: Conversation, currentUserId: string)
   return `${prefix}${msg.content || ""}`;
 }
 
-export default function ConversationListItem({ conversation, currentUser, active, onClick }: Props) {
+export default function ConversationListItem({
+  conversation,
+  currentUser,
+  active,
+  onClick,
+  inPinnedSection,
+}: Props) {
   const other =
     conversation.type === "direct"
       ? conversation.participants.find((p) => p.user.id !== currentUser.id)?.user
@@ -32,7 +39,11 @@ export default function ConversationListItem({ conversation, currentUser, active
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition ${
-        active ? "bg-[var(--color-signal-blue)]/10" : "hover:bg-[var(--color-bg-tertiary)]"
+        active
+          ? "bg-[var(--color-signal-blue)]/10"
+          : inPinnedSection
+            ? "bg-[var(--color-bg-tertiary)] hover:opacity-90"
+            : "hover:bg-[var(--color-bg-tertiary)]"
       }`}
     >
       <Avatar
@@ -47,7 +58,7 @@ export default function ConversationListItem({ conversation, currentUser, active
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate flex items-center gap-1">
             <span className="truncate">{conversation.name || "Unknown"}</span>
-            {conversation.pinned && (
+            {conversation.pinned && !inPinnedSection && (
               <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--color-text-secondary)" className="shrink-0">
                 <path d="M16 3l5 5-5.5 2L13 13l-2 8-2-2 3-8-3.5-3.5L3 10l5-5 3.5 3.5L16 3z" />
               </svg>

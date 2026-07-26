@@ -47,6 +47,14 @@ export default function ConversationListPanel({
     return [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }, [conversations, filter, query, view]);
 
+  // Signal splits the default chat list into a "Pinned" section and a
+  // "Chats" section (with headers) whenever there's at least one pinned
+  // conversation. Search results and the Archived view stay as one flat
+  // list — sectioning only matters for the main, unfiltered list.
+  const showSections = view === "chats" && !query.trim() && filtered.some((c) => c.pinned);
+  const pinnedItems = showSections ? filtered.filter((c) => c.pinned) : [];
+  const restItems = showSections ? filtered.filter((c) => !c.pinned) : filtered;
+
   // Contacts you haven't started a direct conversation with yet, matching the search —
   // surfaces people from your address book, not just existing chats.
   const matchingContacts = useMemo(() => {
@@ -250,15 +258,47 @@ export default function ConversationListPanel({
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">
-            {filtered.map((c) => (
-              <ConversationListItem
-                key={c.id}
-                conversation={c}
-                currentUser={user}
-                active={c.id === selectedId}
-                onClick={() => onSelect(c.id)}
-              />
-            ))}
+            {showSections ? (
+              <>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)] px-3 pt-2 pb-1">
+                  Pinned
+                </p>
+                {pinnedItems.map((c) => (
+                  <ConversationListItem
+                    key={c.id}
+                    conversation={c}
+                    currentUser={user}
+                    active={c.id === selectedId}
+                    onClick={() => onSelect(c.id)}
+                    inPinnedSection
+                  />
+                ))}
+                {restItems.length > 0 && (
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)] px-3 pt-3 pb-1">
+                    Chats
+                  </p>
+                )}
+                {restItems.map((c) => (
+                  <ConversationListItem
+                    key={c.id}
+                    conversation={c}
+                    currentUser={user}
+                    active={c.id === selectedId}
+                    onClick={() => onSelect(c.id)}
+                  />
+                ))}
+              </>
+            ) : (
+              filtered.map((c) => (
+                <ConversationListItem
+                  key={c.id}
+                  conversation={c}
+                  currentUser={user}
+                  active={c.id === selectedId}
+                  onClick={() => onSelect(c.id)}
+                />
+              ))
+            )}
 
             {matchingContacts.length > 0 && (
               <>
