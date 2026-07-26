@@ -59,6 +59,23 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
     markRead(conversationId).catch(() => {});
   }, [conversationId, loadMessages, markRead]);
 
+  // Escape backs out of whichever mode is active — select mode first (it's the
+  // more "in progress" state), then search — rather than doing nothing.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (selectMode) {
+        setSelectMode(false);
+        setSelectedIds(new Set());
+      } else if (searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery("");
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectMode, searchOpen]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [convMessages.length]);

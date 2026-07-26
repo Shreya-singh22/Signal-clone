@@ -35,6 +35,24 @@ export default function ChatShell() {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
 
+  // Keyboard shortcuts: Cmd/Ctrl+K for a new chat, Cmd/Ctrl+, for settings —
+  // matching the conventions of Slack/Discord/most chat apps.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        setModal({ type: "newChat" });
+      } else if (e.key === ",") {
+        e.preventDefault();
+        setModal({ type: "settings" });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   if (authLoading || !user) {
     return (
       <div className="h-full flex items-center justify-center bg-[var(--color-bg)]">
