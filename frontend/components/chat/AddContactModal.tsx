@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import Modal from "@/components/Modal";
 import { api, ApiError } from "@/lib/api";
+import { formatPhoneInput, stripPhoneFormatting } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import type { User } from "@/lib/types";
 
@@ -39,7 +40,7 @@ export default function AddContactModal({ onClose, onMessage }: Props) {
     if (!phone.trim()) return;
     setAdding(true);
     try {
-      const contact = await addContact({ phone_number: phone.trim() });
+      const contact = await addContact({ phone_number: stripPhoneFormatting(phone.trim()) });
       pushToast(`${contact.user.display_name} added`, "Saved to your contacts");
       setPhone("+91");
     } catch (err) {
@@ -85,7 +86,7 @@ export default function AddContactModal({ onClose, onMessage }: Props) {
           <input
             autoFocus
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
             placeholder="+91 98765 43210"
             className="flex-1 rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--color-signal-blue)] transition"
           />

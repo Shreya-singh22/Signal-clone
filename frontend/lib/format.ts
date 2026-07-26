@@ -68,3 +68,24 @@ export const DISAPPEARING_OPTIONS = [
 ];
 
 export const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🙏"];
+
+/**
+ * Live-formats a phone number as the user types, the way real messaging apps
+ * do — e.g. "+919876543210" -> "+91 98765 43210". Only groups the +91 (India)
+ * pattern we default to; anything else (usernames, other country codes) is
+ * left untouched rather than mangled. Strip spaces again before sending to
+ * the API — see stripPhoneFormatting.
+ */
+export function formatPhoneInput(raw: string): string {
+  const stripped = raw.replace(/\s+/g, "");
+  if (!stripped.startsWith("+91")) return raw;
+  const digits = stripped.slice(3);
+  if (!digits) return "+91";
+  const part1 = digits.slice(0, 5);
+  const part2 = digits.slice(5, 10);
+  return part2 ? `+91 ${part1} ${part2}` : `+91 ${part1}`;
+}
+
+export function stripPhoneFormatting(value: string): string {
+  return value.replace(/\s+/g, "");
+}

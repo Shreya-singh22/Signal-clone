@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatPhoneInput, stripPhoneFormatting } from "@/lib/format";
 import { useApp, ApiError } from "@/lib/store";
 
 const DEMO_ACCOUNTS = [
@@ -26,7 +27,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(identifier.trim(), password);
+      await login(stripPhoneFormatting(identifier.trim()), password);
       router.replace("/chat");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -36,7 +37,7 @@ export default function LoginPage() {
   }
 
   function fillDemo(phone: string) {
-    setIdentifier(phone);
+    setIdentifier(formatPhoneInput(phone));
     setPassword("password123");
   }
 
@@ -62,7 +63,7 @@ export default function LoginPage() {
             <input
               autoFocus
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => setIdentifier(formatPhoneInput(e.target.value))}
               className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--color-signal-blue)] transition"
               placeholder="+91 98765 43210"
               required
