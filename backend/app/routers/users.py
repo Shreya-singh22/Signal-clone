@@ -53,3 +53,24 @@ def update_me(
     db.commit()
     db.refresh(current_user)
     return _with_presence(current_user)
+
+
+@router.patch("/me/settings", response_model=schemas.UserOut)
+def update_settings(
+    payload: schemas.UpdateSettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    for field in (
+        "read_receipts_enabled",
+        "typing_indicators_enabled",
+        "notifications_enabled",
+        "notification_preview_enabled",
+        "notification_sound_enabled",
+    ):
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return _with_presence(current_user)

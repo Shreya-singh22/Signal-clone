@@ -7,8 +7,10 @@ from .. import schemas
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import (
+    Contact,
     Conversation,
     ConversationParticipant,
+    ConversationType,
     Message,
     MessageReaction,
     MessageStatus,
@@ -111,6 +113,23 @@ async def send_message(
     if not payload.content and not payload.attachment_url:
         raise HTTPException(status_code=400, detail="Message must have content or attachment")
 
+    if conv.type == ConversationType.direct:
+        other = next((p for p in conv.participants if p.user_id != current_user.id), None)
+        if other:
+            blocked = (
+                db.query(Contact)
+                .filter(
+                    Contact.is_blocked.is_(True),
+                    (
+                        ((Contact.owner_id == current_user.id) & (Contact.contact_user_id == other.user_id))
+                        | ((Contact.owner_id == other.user_id) & (Contact.contact_user_id == current_user.id))
+                    ),
+                )
+                .first()
+            )
+            if blocked:
+                raise HTTPException(status_code=403, detail="You can't message a blocked contact")
+
     expires_at = None
     if conv.disappearing_seconds:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=conv.disappearing_seconds)
@@ -123,6 +142,7 @@ async def send_message(
         attachment_url=payload.attachment_url,
         attachment_type=payload.attachment_type,
         attachment_name=payload.attachment_name,
+        is_forwarded=bool(payload.is_forwarded),
         expires_at=expires_at,
     )
     db.add(message)
@@ -174,6 +194,94 @@ async def delete_message(
         {"type": "message_deleted", "conversation_id": conv.id, "message_id": message.id},
     )
     return {"ok": True}
+
+
+@router.patch("/api/messages/{message_id}", response_model=schemas.MessageOut)
+async def edit_message(
+    message_id: str,
+    payload: schemas.EditMessageRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    message = db.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if message.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot edit another user's message")
+    if message.is_deleted or message.is_system:
+        raise HTTPException(status_code=400, detail="This message can't be edited")
+    if not payload.content.strip():
+        raise HTTPException(status_code=400, detail="Message can't be empty")
+
+    message.content = payload.content.strip()
+    message.is_edited = True
+    message.edited_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(message)
+
+    conv = db.query(Conversation).filter(Conversation.id == message.conversation_id).first()
+    recipient_count = max(len(conv.participants) - 1, 0)
+    result = _message_out(message, recipient_count)
+    member_ids = [p.user_id for p in conv.participants]
+    await manager.send_to_users(
+        member_ids, {"type": "message_edited", "message": result.model_dump(mode="json")}
+    )
+    return result
+
+
+@router.post("/api/messages/{message_id}/pin", response_model=schemas.MessageOut)
+async def pin_message(
+    message_id: str,
+    payload: schemas.PinMessageRequest,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    message = db.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    _require_participant(db, message.conversation_id, current_user.id)
+
+    message.pinned_at = datetime.now(timezone.utc) if payload.pinned else None
+    db.commit()
+    db.refresh(message)
+
+    conv = db.query(Conversation).filter(Conversation.id == message.conversation_id).first()
+    recipient_count = max(len(conv.participants) - 1, 0)
+    result = _message_out(message, recipient_count)
+    member_ids = [p.user_id for p in conv.participants]
+    await manager.send_to_users(
+        member_ids,
+        {"type": "pin_update", "conversation_id": conv.id, "message": result.model_dump(mode="json")},
+    )
+    return result
+
+
+@router.get("/api/messages/{message_id}/info", response_model=schemas.MessageInfoOut)
+def message_info(
+    message_id: str,
+    current_user: User = Depends(get_current_user),
+    db: DbSession = Depends(get_db),
+):
+    message = db.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    _require_participant(db, message.conversation_id, current_user.id)
+
+    conv = db.query(Conversation).filter(Conversation.id == message.conversation_id).first()
+    recipient_count = max(len(conv.participants) - 1, 0)
+    receipts = [
+        schemas.ReceiptDetail(
+            user=schemas.UserOut.model_validate(s.user),
+            status=s.status.value,
+            updated_at=s.updated_at,
+        )
+        for s in message.statuses
+    ]
+    return schemas.MessageInfoOut(
+        message=_message_out(message, recipient_count),
+        sender=schemas.UserOut.model_validate(message.sender),
+        receipts=receipts,
+    )
 
 
 @router.post("/api/messages/{message_id}/reactions", response_model=schemas.MessageOut)

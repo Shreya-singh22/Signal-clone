@@ -11,7 +11,8 @@ import {
   useState,
 } from "react";
 import { api, ApiError, API_URL, setAuthToken } from "./api";
-import type { Contact, Conversation, Message, User } from "./types";
+import { playNotificationSound } from "./sound";
+import type { Contact, Conversation, Message, MessageInfo, User } from "./types";
 
 // ---------- Toasts ----------
 
@@ -109,6 +110,10 @@ interface AppContextValue {
     opts?: { reply_to_id?: string; attachment_url?: string; attachment_type?: string; attachment_name?: string }
   ) => Promise<void>;
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
+  editMessage: (conversationId: string, messageId: string, content: string) => Promise<void>;
+  pinMessage: (conversationId: string, messageId: string, pinned: boolean) => Promise<void>;
+  forwardMessage: (targetConversationId: string, message: Message) => Promise<void>;
+  messageInfo: (messageId: string) => Promise<MessageInfo>;
   react: (conversationId: string, messageId: string, emoji: string) => Promise<void>;
   markRead: (conversationId: string) => Promise<void>;
   sendTyping: (conversationId: string) => void;
@@ -121,6 +126,20 @@ interface AppContextValue {
   addMember: (conversationId: string, userId: string) => Promise<void>;
   removeMember: (conversationId: string, userId: string) => Promise<void>;
   updateProfile: (payload: Partial<Pick<User, "display_name" | "about" | "avatar_color" | "avatar_emoji">>) => Promise<void>;
+  updateSettings: (
+    payload: Partial<
+      Pick<
+        User,
+        | "read_receipts_enabled"
+        | "typing_indicators_enabled"
+        | "notifications_enabled"
+        | "notification_preview_enabled"
+        | "notification_sound_enabled"
+      >
+    >
+  ) => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
   pushToast: (title: string, body?: string) => void;
   dismissToast: (id: string) => void;
 }
@@ -306,12 +325,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (!message.is_system) {
             const senderIsMe = me && message.sender_id === me.id;
             if (!senderIsMe && activeConversationIdRef.current !== message.conversation_id) {
-              const conv = conversationsRef.current.find((c) => c.id === message.conversation_id);
-              const senderP = conv?.participants.find((p) => p.user.id === message.sender_id);
-              pushToast(
-                senderP?.user.display_name || "New message",
-                message.content || (message.attachment_url ? "Sent an attachment" : "")
-              );
+              if (me?.notifications_enabled) {
+                const conv = conversationsRef.current.find((c) => c.id === message.conversation_id);
+                const senderP = conv?.participants.find((p) => p.user.id === message.sender_id);
+                pushToast(
+                  senderP?.user.display_name || "New message",
+                  me.notification_preview_enabled
+                    ? message.content || (message.attachment_url ? "Sent an attachment" : "")
+                    : "New message"
+                );
+                if (me.notification_sound_enabled) playNotificationSound();
+              }
             }
           } else if (activeConversationIdRef.current === message.conversation_id) {
             // system message in active conversation already appended above
@@ -350,6 +374,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         case "reaction_update": {
           const message = data.message as Message;
           dispatchMessages({ type: "UPSERT", conversationId: message.conversation_id, message });
+          break;
+        }
+        case "message_edited": {
+          const message = data.message as Message;
+          dispatchMessages({ type: "UPSERT", conversationId: message.conversation_id, message });
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === message.conversation_id && c.last_message?.id === message.id
+                ? { ...c, last_message: message }
+                : c
+            )
+          );
+          break;
+        }
+        case "pin_update": {
+          const message = data.message as Message;
+          dispatchMessages({ type: "UPSERT", conversationId: message.conversation_id, message });
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== message.conversation_id) return c;
+              const withoutMessage = c.pinned_messages.filter((m) => m.id !== message.id);
+              const pinned_messages = message.pinned_at
+                ? [message, ...withoutMessage].sort((a, b) => (b.pinned_at || "").localeCompare(a.pinned_at || ""))
+                : withoutMessage;
+              return { ...c, pinned_messages };
+            })
+          );
           break;
         }
         case "presence": {
@@ -428,7 +479,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reply_to_id: opts?.reply_to_id || null,
         is_deleted: false,
         is_system: false,
+        is_edited: false,
+        is_forwarded: false,
+        pinned_at: null,
         created_at: new Date().toISOString(),
+        edited_at: null,
         status: "sending",
         reactions: [],
       };
@@ -464,6 +519,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = await api.react(messageId, emoji);
     dispatchMessages({ type: "UPSERT", conversationId, message: updated });
   }, []);
+
+  const editMessage = useCallback(async (conversationId: string, messageId: string, content: string) => {
+    const updated = await api.editMessage(messageId, content);
+    dispatchMessages({ type: "UPSERT", conversationId, message: updated });
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId && c.last_message?.id === messageId ? { ...c, last_message: updated } : c))
+    );
+  }, []);
+
+  const pinMessage = useCallback(async (conversationId: string, messageId: string, pinned: boolean) => {
+    const updated = await api.pinMessage(messageId, pinned);
+    dispatchMessages({ type: "UPSERT", conversationId, message: updated });
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== conversationId) return c;
+        const withoutMessage = c.pinned_messages.filter((m) => m.id !== messageId);
+        return { ...c, pinned_messages: pinned ? [updated, ...withoutMessage] : withoutMessage };
+      })
+    );
+  }, []);
+
+  const forwardMessage = useCallback(async (targetConversationId: string, message: Message) => {
+    await api.sendMessage(targetConversationId, {
+      content: message.content || undefined,
+      attachment_url: message.attachment_url || undefined,
+      attachment_type: message.attachment_type || undefined,
+      attachment_name: message.attachment_name || undefined,
+      is_forwarded: true,
+    });
+  }, []);
+
+  const messageInfo = useCallback((messageId: string) => api.messageInfo(messageId), []);
 
   const markRead = useCallback(async (conversationId: string) => {
     setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)));
@@ -559,6 +646,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateSettings = useCallback(
+    async (
+      payload: Partial<
+        Pick<
+          User,
+          | "read_receipts_enabled"
+          | "typing_indicators_enabled"
+          | "notifications_enabled"
+          | "notification_preview_enabled"
+          | "notification_sound_enabled"
+        >
+      >
+    ) => {
+      const updated = await api.updateSettings(payload);
+      setUser(updated);
+    },
+    []
+  );
+
+  const blockUser = useCallback(async (userId: string) => {
+    const contact = await api.blockUser(userId);
+    setContacts((prev) => {
+      const exists = prev.find((c) => c.id === contact.id);
+      if (exists) return prev.map((c) => (c.id === contact.id ? contact : c));
+      return [...prev, contact];
+    });
+  }, []);
+
+  const unblockUser = useCallback(async (userId: string) => {
+    const contact = await api.unblockUser(userId);
+    setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
+  }, []);
+
   const value: AppContextValue = useMemo(
     () => ({
       user,
@@ -578,6 +698,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadMessages,
       sendMessage,
       deleteMessage,
+      editMessage,
+      pinMessage,
+      forwardMessage,
+      messageInfo,
       react,
       markRead,
       sendTyping,
@@ -590,6 +714,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addMember,
       removeMember,
       updateProfile,
+      updateSettings,
+      blockUser,
+      unblockUser,
       pushToast,
       dismissToast,
     }),
@@ -610,6 +737,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadMessages,
       sendMessage,
       deleteMessage,
+      editMessage,
+      pinMessage,
+      forwardMessage,
+      messageInfo,
       react,
       markRead,
       sendTyping,
@@ -622,6 +753,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addMember,
       removeMember,
       updateProfile,
+      updateSettings,
+      blockUser,
+      unblockUser,
       pushToast,
       dismissToast,
     ]

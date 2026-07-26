@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Avatar from "@/components/Avatar";
 import Modal from "@/components/Modal";
 import { useApp } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
+import type { User } from "@/lib/types";
 
 const AVATAR_COLORS = ["#2C6BED", "#3AA3E3", "#D0895F", "#6C63C7", "#4CAF7D", "#E0A030", "#E35D6A", "#8854D0"];
 const AVATAR_EMOJIS = ["🙂", "😎", "🌟", "🚀", "🎧", "📚", "🌿", "🎨", "🧑‍💻", "🐱", "☕", "⚡"];
@@ -20,7 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function SettingsModal({ onClose }: { onClose: () => void }) {
-  const { user, updateProfile, logout, pushToast } = useApp();
+  const { user, contacts, updateProfile, updateSettings, unblockUser, logout, pushToast } = useApp();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("profile");
@@ -161,8 +163,18 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {tab === "privacy" && <ComingSoon label="Privacy settings" description="Blocked contacts, screen lock, and read receipt controls are coming soon." />}
-          {tab === "notifications" && <ComingSoon label="Notification settings" description="Fine-grained notification and sound preferences are coming soon." />}
+          {tab === "privacy" && (
+            <PrivacyTab
+              user={user}
+              blockedContacts={contacts.filter((c) => c.is_blocked)}
+              updateSettings={updateSettings}
+              unblockUser={unblockUser}
+              pushToast={pushToast}
+            />
+          )}
+          {tab === "notifications" && (
+            <NotificationsTab user={user} updateSettings={updateSettings} pushToast={pushToast} />
+          )}
           {tab === "devices" && <ComingSoon label="Linked devices" description="Pair Signam with a tablet or desktop client — coming soon." />}
         </div>
       </div>
@@ -181,6 +193,168 @@ function ComingSoon({ label, description }: { label: string; description: string
       </div>
       <p className="text-sm font-medium text-[var(--color-text-primary)]">{label}</p>
       <p className="text-xs text-[var(--color-text-secondary)] mt-1 max-w-xs">{description}</p>
+    </div>
+  );
+}
+
+type SettingsPayload = Partial<
+  Pick<
+    User,
+    | "read_receipts_enabled"
+    | "typing_indicators_enabled"
+    | "notifications_enabled"
+    | "notification_preview_enabled"
+    | "notification_sound_enabled"
+  >
+>;
+
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm text-[var(--color-text-primary)]">{label}</p>
+        <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{description}</p>
+      </div>
+      <button
+        onClick={() => onChange(!checked)}
+        className={`relative shrink-0 w-10 h-6 rounded-full transition ${
+          checked ? "bg-[var(--color-signal-blue)]" : "bg-[var(--color-bg-tertiary)]"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function PrivacyTab({
+  user,
+  blockedContacts,
+  updateSettings,
+  unblockUser,
+  pushToast,
+}: {
+  user: User;
+  blockedContacts: { id: string; user: User }[];
+  updateSettings: (payload: SettingsPayload) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
+  pushToast: (title: string, body?: string) => void;
+}) {
+  async function toggle(field: keyof SettingsPayload, value: boolean) {
+    try {
+      await updateSettings({ [field]: value });
+    } catch {
+      pushToast("Couldn't update setting");
+    }
+  }
+
+  return (
+    <div className="flex flex-col">
+      <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-1">
+        Messaging
+      </p>
+      <div className="divide-y divide-[var(--color-border)]">
+        <ToggleRow
+          label="Read receipts"
+          description="See and share when messages have been read. If off, you won't send or see read receipts."
+          checked={user.read_receipts_enabled}
+          onChange={(v) => toggle("read_receipts_enabled", v)}
+        />
+        <ToggleRow
+          label="Typing indicators"
+          description="See and share when you're typing a message."
+          checked={user.typing_indicators_enabled}
+          onChange={(v) => toggle("typing_indicators_enabled", v)}
+        />
+      </div>
+
+      <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mt-5 mb-1">
+        Blocked contacts
+      </p>
+      {blockedContacts.length === 0 ? (
+        <p className="text-sm text-[var(--color-text-secondary)] py-2">
+          No blocked contacts. Block someone from their chat info page.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-0.5">
+          {blockedContacts.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 py-2">
+              <Avatar name={c.user.display_name} color={c.user.avatar_color} emoji={c.user.avatar_emoji} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-[var(--color-text-primary)] truncate">{c.user.display_name}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    await unblockUser(c.user.id);
+                    pushToast(`Unblocked ${c.user.display_name}`);
+                  } catch {
+                    pushToast("Couldn't unblock");
+                  }
+                }}
+                className="text-xs text-[var(--color-signal-blue)] font-medium shrink-0"
+              >
+                Unblock
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotificationsTab({
+  user,
+  updateSettings,
+  pushToast,
+}: {
+  user: User;
+  updateSettings: (payload: SettingsPayload) => Promise<void>;
+  pushToast: (title: string, body?: string) => void;
+}) {
+  async function toggle(field: keyof SettingsPayload, value: boolean) {
+    try {
+      await updateSettings({ [field]: value });
+    } catch {
+      pushToast("Couldn't update setting");
+    }
+  }
+
+  return (
+    <div className="divide-y divide-[var(--color-border)]">
+      <ToggleRow
+        label="Message notifications"
+        description="Show a toast when a new message arrives in a chat you're not viewing."
+        checked={user.notifications_enabled}
+        onChange={(v) => toggle("notifications_enabled", v)}
+      />
+      <ToggleRow
+        label="Show message preview"
+        description={'Show the message text in the notification. If off, just shows "New message".'}
+        checked={user.notification_preview_enabled}
+        onChange={(v) => toggle("notification_preview_enabled", v)}
+      />
+      <ToggleRow
+        label="Notification sound"
+        description="Play a sound when a new message notification appears."
+        checked={user.notification_sound_enabled}
+        onChange={(v) => toggle("notification_sound_enabled", v)}
+      />
     </div>
   );
 }

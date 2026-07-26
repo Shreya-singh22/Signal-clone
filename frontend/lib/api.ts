@@ -1,4 +1,4 @@
-import type { Contact, Conversation, Message, User } from "./types";
+import type { Contact, Conversation, Message, MessageInfo, User } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -67,12 +67,28 @@ export const api = {
   me: () => request<User>("/api/auth/me"),
   updateProfile: (payload: Partial<Pick<User, "display_name" | "about" | "avatar_color" | "avatar_emoji">>) =>
     request<User>("/api/users/me", { method: "PATCH", body: JSON.stringify(payload) }),
+  updateSettings: (
+    payload: Partial<
+      Pick<
+        User,
+        | "read_receipts_enabled"
+        | "typing_indicators_enabled"
+        | "notifications_enabled"
+        | "notification_preview_enabled"
+        | "notification_sound_enabled"
+      >
+    >
+  ) => request<User>("/api/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),
   searchUsers: (q: string) => request<User[]>(`/api/users/search?q=${encodeURIComponent(q)}`),
 
   listContacts: () => request<Contact[]>("/api/contacts"),
   addContact: (payload: { username?: string; phone_number?: string; nickname?: string }) =>
     request<Contact>("/api/contacts", { method: "POST", body: JSON.stringify(payload) }),
   deleteContact: (id: string) => request(`/api/contacts/${id}`, { method: "DELETE" }),
+  blockUser: (userId: string) =>
+    request<Contact>("/api/contacts/block", { method: "POST", body: JSON.stringify({ user_id: userId }) }),
+  unblockUser: (userId: string) =>
+    request<Contact>("/api/contacts/unblock", { method: "POST", body: JSON.stringify({ user_id: userId }) }),
 
   listConversations: () => request<Conversation[]>("/api/conversations"),
   getConversation: (id: string) => request<Conversation>(`/api/conversations/${id}`),
@@ -118,6 +134,7 @@ export const api = {
       attachment_url?: string;
       attachment_type?: string;
       attachment_name?: string;
+      is_forwarded?: boolean;
     }
   ) =>
     request<Message>(`/api/conversations/${conversationId}/messages`, {
@@ -125,6 +142,17 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteMessage: (messageId: string) => request(`/api/messages/${messageId}`, { method: "DELETE" }),
+  editMessage: (messageId: string, content: string) =>
+    request<Message>(`/api/messages/${messageId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ content }),
+    }),
+  pinMessage: (messageId: string, pinned: boolean) =>
+    request<Message>(`/api/messages/${messageId}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned }),
+    }),
+  messageInfo: (messageId: string) => request<MessageInfo>(`/api/messages/${messageId}/info`),
   react: (messageId: string, emoji: string) =>
     request<Message>(`/api/messages/${messageId}/reactions`, {
       method: "POST",

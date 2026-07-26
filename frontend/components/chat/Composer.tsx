@@ -13,6 +13,9 @@ interface Props {
   replyTo: Message | null;
   replyToSenderName?: string;
   onCancelReply: () => void;
+  editingMessage: Message | null;
+  onCancelEdit: () => void;
+  onSaveEdit: (content: string) => void;
   onSend: (
     content: string,
     opts?: { attachment_url?: string; attachment_type?: string; attachment_name?: string }
@@ -26,6 +29,9 @@ export default function Composer({
   replyTo,
   replyToSenderName,
   onCancelReply,
+  editingMessage,
+  onCancelEdit,
+  onSaveEdit,
   onSend,
   onTyping,
   onStopTyping,
@@ -34,13 +40,29 @@ export default function Composer({
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [lastEditingId, setLastEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isEditing = !!editingMessage;
+
+  // Adjust the draft text when a *different* message enters edit mode — done during
+  // render (React's recommended pattern for this) rather than in an effect, since
+  // Composer stays mounted across edits instead of remounting per message.
+  if (editingMessage && editingMessage.id !== lastEditingId) {
+    setLastEditingId(editingMessage.id);
+    setText(editingMessage.content || "");
+  } else if (!editingMessage && lastEditingId !== null) {
+    setLastEditingId(null);
+  }
 
   function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSend(trimmed);
+    if (isEditing) {
+      onSaveEdit(trimmed);
+    } else {
+      onSend(trimmed);
+    }
     setText("");
     onStopTyping();
   }
@@ -62,7 +84,30 @@ export default function Composer({
 
   return (
     <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
-      {replyTo && (
+      {isEditing && (
+        <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] rounded-lg px-3 py-2 mb-2">
+          <div className="min-w-0 flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-signal-blue)" strokeWidth="2" className="shrink-0">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" />
+            </svg>
+            <p className="text-xs font-semibold text-[var(--color-signal-blue)]">Editing message</p>
+          </div>
+          <button
+            onClick={() => {
+              onCancelEdit();
+              setText("");
+            }}
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] shrink-0 ml-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+      {!isEditing && replyTo && (
         <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] rounded-lg px-3 py-2 mb-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-[var(--color-signal-blue)]">
@@ -88,9 +133,9 @@ export default function Composer({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || isEditing}
           title="Attach file"
-          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-50"
+          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-30"
         >
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -158,11 +203,17 @@ export default function Composer({
           type="submit"
           disabled={!text.trim()}
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-signal-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-signal-blue-dark)] transition"
-          title="Send"
+          title={isEditing ? "Save" : "Send"}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
-          </svg>
+          {isEditing ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+            </svg>
+          )}
         </button>
       </form>
     </div>

@@ -26,7 +26,7 @@ export default function Avatar({ name, color, emoji, size = 40, online, showPres
       {showPresence && (
         <span
           className={`absolute bottom-0 right-0 rounded-full border-2 border-[var(--color-bg)] ${
-            online ? "bg-emerald-500" : "bg-transparent"
+            online ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-500"
           }`}
           style={{ width: size * 0.28, height: size * 0.28 }}
         />

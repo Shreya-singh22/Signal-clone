@@ -18,7 +18,15 @@ interface Props {
   onReply: () => void;
   onDelete: () => void;
   onReact: (emoji: string) => void;
+  onEdit: () => void;
+  onForward: () => void;
+  onPin: () => void;
+  onInfo: () => void;
+  onEnterSelectMode: () => void;
   currentUserId: string;
+  selectMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }
 
 function attachmentSrc(url: string) {
@@ -36,10 +44,19 @@ export default function MessageBubble({
   onReply,
   onDelete,
   onReact,
+  onEdit,
+  onForward,
+  onPin,
+  onInfo,
+  onEnterSelectMode,
   currentUserId,
+  selectMode,
+  isSelected,
+  onToggleSelect,
 }: Props) {
   const [showPicker, setShowPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [justReacted, setJustReacted] = useState(false);
 
   if (message.is_system) {
     return (
@@ -57,28 +74,66 @@ export default function MessageBubble({
     return acc;
   }, {});
   const hasReactions = Object.keys(reactionCounts).length > 0;
+  const isPinned = !!message.pinned_at;
+
+  async function copyText() {
+    if (message.content) {
+      try {
+        await navigator.clipboard.writeText(message.content);
+      } catch {
+        // clipboard permission denied — nothing more we can do here
+      }
+    }
+  }
+
+  function handleBubbleClick() {
+    if (selectMode) onToggleSelect();
+  }
+
+  function handleDoubleClick() {
+    if (selectMode) return;
+    onReact("❤️");
+    setJustReacted(true);
+    window.setTimeout(() => setJustReacted(false), 220);
+  }
 
   return (
     <div
-      className={`group flex flex-col ${isOwn ? "items-end" : "items-start"} px-4 sm:px-8 ${
+      className={`animate-message-in group flex flex-col ${isOwn ? "items-end" : "items-start"} px-4 sm:px-8 ${
         hasReactions ? "mb-3" : "mb-0.5"
       }`}
     >
-
       {showSender && !isOwn && (
         <span className="text-xs font-semibold ml-1 mb-0.5" style={{ color: senderColor }}>
           {senderName}
         </span>
       )}
       <div className={`flex items-center gap-1.5 max-w-[75%] ${isOwn ? "flex-row-reverse" : ""}`}>
+        {selectMode && !message.is_deleted && (
+          <button
+            onClick={onToggleSelect}
+            className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition ${
+              isSelected ? "bg-[var(--color-signal-blue)] border-[var(--color-signal-blue)]" : "border-[var(--color-border)]"
+            }`}
+          >
+            {isSelected && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </button>
+        )}
         <div className="relative">
           <div
-            onDoubleClick={() => onReact("❤️")}
-            className={`relative rounded-2xl px-3.5 py-2 ${
+            onDoubleClick={handleDoubleClick}
+            onClick={handleBubbleClick}
+            className={`relative rounded-2xl px-3.5 py-2 ${selectMode ? "cursor-pointer" : ""} ${
+              justReacted ? "animate-bubble-pop" : ""
+            } ${
               isOwn
                 ? "bg-[var(--color-bubble-out)] text-white rounded-br-md"
                 : "bg-[var(--color-bubble-in)] text-[var(--color-text-primary)] rounded-bl-md"
-            }`}
+            } ${isSelected ? "ring-2 ring-[var(--color-signal-blue)]" : ""}`}
           >
             {message.is_deleted ? (
               <p className="text-sm italic opacity-70 flex items-center gap-1.5">
@@ -91,6 +146,19 @@ export default function MessageBubble({
               </p>
             ) : (
               <>
+                {message.is_forwarded && (
+                  <p
+                    className={`flex items-center gap-1 text-xs italic mb-1 ${
+                      isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"
+                    }`}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="15 17 20 12 15 7" />
+                      <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+                    </svg>
+                    Forwarded
+                  </p>
+                )}
                 {replyToMessage && (
                   <div
                     className={`mb-1.5 rounded-lg px-2.5 py-1.5 border-l-2 text-xs ${
@@ -140,7 +208,23 @@ export default function MessageBubble({
                 )}
               </>
             )}
-            <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? "justify-end" : "justify-end"}`}>
+            <div className="flex items-center gap-1 mt-0.5 justify-end">
+              {isPinned && (
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className={isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}
+                >
+                  <path d="M16 3l5 5-5.5 2L13 13l-2 8-2-2 3-8-3.5-3.5L3 10l5-5 3.5 3.5L16 3z" />
+                </svg>
+              )}
+              {message.is_edited && !message.is_deleted && (
+                <span className={`text-[10px] italic ${isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}`}>
+                  edited
+                </span>
+              )}
               <span className={`text-[10px] ${isOwn ? "text-white/70" : "text-[var(--color-text-secondary)]"}`}>
                 {formatTime(message.created_at)}
               </span>
@@ -150,15 +234,17 @@ export default function MessageBubble({
 
           {Object.keys(reactionCounts).length > 0 && (
             <div
-              className={`absolute -bottom-2.5 flex items-center gap-1 bg-[var(--color-bg-secondary)] rounded-full pl-1 pr-1.5 py-0.5 shadow-md ${
+              className={`animate-reaction-pop absolute -bottom-2 flex items-center gap-0.5 bg-[var(--color-bg-secondary)] rounded-full pl-1 pr-1 py-0.5 shadow-md ${
                 isOwn ? "right-1" : "left-1"
               }`}
             >
               {Object.entries(reactionCounts).map(([emoji, count]) => (
                 <span key={emoji} className="flex items-center gap-0.5 leading-none">
-                  <span className="text-base">{emoji}</span>
+                  <span className="text-xs leading-none">{emoji}</span>
                   {count > 1 && (
-                    <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">{count}</span>
+                    <span className="text-[9px] font-medium leading-none text-[var(--color-text-secondary)]">
+                      {count}
+                    </span>
                   )}
                 </span>
               ))}
@@ -166,7 +252,7 @@ export default function MessageBubble({
           )}
         </div>
 
-        {!message.is_deleted && (
+        {!message.is_deleted && !selectMode && (
           <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 relative">
             <button
               onClick={() => setShowPicker((s) => !s)}
@@ -190,19 +276,17 @@ export default function MessageBubble({
                 <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
               </svg>
             </button>
-            {isOwn && (
-              <button
-                onClick={() => setShowMenu((s) => !s)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-                title="More"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="5" cy="12" r="1.5" />
-                  <circle cx="12" cy="12" r="1.5" />
-                  <circle cx="19" cy="12" r="1.5" />
-                </svg>
-              </button>
-            )}
+            <button
+              onClick={() => setShowMenu((s) => !s)}
+              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+              title="More"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
+              </svg>
+            </button>
 
             {showPicker && (
               <>
@@ -232,19 +316,105 @@ export default function MessageBubble({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                 <div
-                  className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1 w-36 animate-fade-in-up ${
+                  className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 w-44 animate-fade-in-up ${
                     isOwn ? "right-0" : "left-0"
                   }`}
                 >
-                  <button
+                  <MenuItem
                     onClick={() => {
-                      onDelete();
+                      onForward();
                       setShowMenu(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 text-sm text-red-500 hover:bg-[var(--color-bg-tertiary)]"
-                  >
-                    Delete
-                  </button>
+                    label="Forward"
+                    icon={
+                      <>
+                        <polyline points="15 17 20 12 15 7" />
+                        <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+                      </>
+                    }
+                  />
+                  {isOwn && !message.attachment_url && (
+                    <MenuItem
+                      onClick={() => {
+                        onEdit();
+                        setShowMenu(false);
+                      }}
+                      label="Edit"
+                      icon={
+                        <>
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                        </>
+                      }
+                    />
+                  )}
+                  <MenuItem
+                    onClick={() => {
+                      onEnterSelectMode();
+                      setShowMenu(false);
+                    }}
+                    label="Select"
+                    icon={
+                      <>
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="8 12 11 15 16 9" />
+                      </>
+                    }
+                  />
+                  {message.content && (
+                    <MenuItem
+                      onClick={() => {
+                        copyText();
+                        setShowMenu(false);
+                      }}
+                      label="Copy text"
+                      icon={
+                        <>
+                          <rect x="9" y="9" width="11" height="11" rx="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </>
+                      }
+                    />
+                  )}
+                  <MenuItem
+                    onClick={() => {
+                      onPin();
+                      setShowMenu(false);
+                    }}
+                    label={isPinned ? "Unpin" : "Pin"}
+                    icon={<path d="M16 3l5 5-5.5 2L13 13l-2 8-2-2 3-8-3.5-3.5L3 10l5-5 3.5 3.5L16 3z" />}
+                  />
+                  <MenuItem
+                    onClick={() => {
+                      onInfo();
+                      setShowMenu(false);
+                    }}
+                    label="Info"
+                    icon={
+                      <>
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </>
+                    }
+                  />
+                  {isOwn && (
+                    <MenuItem
+                      onClick={() => {
+                        onDelete();
+                        setShowMenu(false);
+                      }}
+                      label="Delete"
+                      danger
+                      icon={
+                        <>
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        </>
+                      }
+                    />
+                  )}
                 </div>
               </>
             )}
@@ -252,5 +422,31 @@ export default function MessageBubble({
         )}
       </div>
     </div>
+  );
+}
+
+function MenuItem({
+  onClick,
+  label,
+  icon,
+  danger,
+}: {
+  onClick: () => void;
+  label: string;
+  icon: React.ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2.5 text-left px-3.5 py-1.5 text-sm hover:bg-[var(--color-bg-tertiary)] transition ${
+        danger ? "text-red-500" : "text-[var(--color-text-primary)]"
+      }`}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        {icon}
+      </svg>
+      {label}
+    </button>
   );
 }

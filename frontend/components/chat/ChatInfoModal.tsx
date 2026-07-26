@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function ChatInfoModal({ conversation, onClose, onAddMembers, onLeftOrClosed }: Props) {
-  const { user, updateConversation, removeMember, pushToast } = useApp();
+  const { user, contacts, updateConversation, removeMember, blockUser, unblockUser, pushToast } = useApp();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(conversation.name || "");
   const [busy, setBusy] = useState(false);
@@ -27,6 +27,25 @@ export default function ChatInfoModal({ conversation, onClose, onAddMembers, onL
     conversation.type === "direct"
       ? conversation.participants.find((p) => p.user.id !== user.id)?.user
       : undefined;
+  const isBlocked = !!other && contacts.find((c) => c.user.id === other.id)?.is_blocked;
+
+  async function toggleBlock() {
+    if (!other) return;
+    setBusy(true);
+    try {
+      if (isBlocked) {
+        await unblockUser(other.id);
+        pushToast(`Unblocked ${other.display_name}`);
+      } else {
+        await blockUser(other.id);
+        pushToast(`Blocked ${other.display_name}`, "They can no longer message you.");
+      }
+    } catch {
+      pushToast("Couldn't update block status");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function saveName() {
     if (!nameDraft.trim() || nameDraft === conversation.name) {
@@ -133,6 +152,22 @@ export default function ChatInfoModal({ conversation, onClose, onAddMembers, onL
           ))}
         </select>
       </div>
+
+      {conversation.type === "direct" && other && (
+        <div className="border-t border-[var(--color-border)] pt-4">
+          <button
+            disabled={busy}
+            onClick={toggleBlock}
+            className={`w-full rounded-lg border text-sm font-medium py-2.5 transition disabled:opacity-50 ${
+              isBlocked
+                ? "border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]"
+                : "border-red-500/30 text-red-500 hover:bg-red-500/10"
+            }`}
+          >
+            {isBlocked ? `Unblock ${other.display_name}` : `Block ${other.display_name}`}
+          </button>
+        </div>
+      )}
 
       {conversation.type === "group" && (
         <div className="border-t border-[var(--color-border)] pt-4">

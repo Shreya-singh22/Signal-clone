@@ -64,6 +64,14 @@ def _conversation_out(
         .order_by(Message.created_at.desc())
         .first()
     )
+    pinned = (
+        db.query(Message)
+        .filter(Message.conversation_id == conv.id, Message.pinned_at.isnot(None))
+        .order_by(Message.pinned_at.desc())
+        .limit(3)
+        .all()
+    )
+
     me = next((p for p in participants if p.user_id == current_user_id), None)
     unread_count = 0
     if me:
@@ -94,6 +102,7 @@ def _conversation_out(
         updated_at=conv.updated_at,
         participants=[schemas.ParticipantOut.model_validate(p) for p in participants],
         last_message=_message_out(last_message, recipient_count) if last_message else None,
+        pinned_messages=[_message_out(m, recipient_count) for m in pinned],
         unread_count=unread_count,
         archived=bool(me.archived) if me else False,
         muted=bool(me.muted) if me else False,
@@ -364,25 +373,29 @@ async def mark_read(
     participant = _require_participant(db, conversation_id, current_user.id)
     participant.last_read_at = datetime.now(timezone.utc)
 
-    unread_messages = (
-        db.query(Message)
-        .filter(
-            Message.conversation_id == conversation_id,
-            Message.sender_id != current_user.id,
-        )
-        .all()
-    )
     senders_to_notify: dict[str, list[str]] = {}
-    for msg in unread_messages:
-        status_row = None
-        for s in msg.statuses:
-            if s.user_id == current_user.id:
-                status_row = s
-                break
-        if status_row and status_row.status != MessageStatusEnum.read:
-            status_row.status = MessageStatusEnum.read
-            status_row.updated_at = datetime.now(timezone.utc)
-            senders_to_notify.setdefault(msg.sender_id, []).append(msg.id)
+    # If the reader has read receipts turned off, we still track their own unread
+    # count (last_read_at above) but never flip a status to "read" or tell the
+    # sender — mirrors Signal's "you don't send receipts if you've disabled them".
+    if current_user.read_receipts_enabled:
+        unread_messages = (
+            db.query(Message)
+            .filter(
+                Message.conversation_id == conversation_id,
+                Message.sender_id != current_user.id,
+            )
+            .all()
+        )
+        for msg in unread_messages:
+            status_row = None
+            for s in msg.statuses:
+                if s.user_id == current_user.id:
+                    status_row = s
+                    break
+            if status_row and status_row.status != MessageStatusEnum.read:
+                status_row.status = MessageStatusEnum.read
+                status_row.updated_at = datetime.now(timezone.utc)
+                senders_to_notify.setdefault(msg.sender_id, []).append(msg.id)
     db.commit()
 
     for sender_id, message_ids in senders_to_notify.items():

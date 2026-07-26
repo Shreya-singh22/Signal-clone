@@ -53,6 +53,15 @@ class User(Base):
     last_seen_at = Column(DateTime, default=now)
     created_at = Column(DateTime, default=now)
 
+    # Privacy settings (mocked but functional — enforced server-side, see routers)
+    read_receipts_enabled = Column(Boolean, default=True)
+    typing_indicators_enabled = Column(Boolean, default=True)
+
+    # Notification settings (enforced client-side against these values)
+    notifications_enabled = Column(Boolean, default=True)
+    notification_preview_enabled = Column(Boolean, default=True)
+    notification_sound_enabled = Column(Boolean, default=True)
+
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     sent_messages = relationship("Message", back_populates="sender", cascade="all, delete-orphan")
     participations = relationship(
@@ -80,6 +89,7 @@ class Contact(Base):
     owner_id = Column(String, ForeignKey("users.id"), nullable=False)
     contact_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     nickname = Column(String, nullable=True)
+    is_blocked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=now)
 
     owner = relationship("User", foreign_keys=[owner_id])
@@ -140,7 +150,11 @@ class Message(Base):
     reply_to_id = Column(String, ForeignKey("messages.id"), nullable=True)
     is_deleted = Column(Boolean, default=False)
     is_system = Column(Boolean, default=False)  # "X added Y" events
+    is_edited = Column(Boolean, default=False)
+    is_forwarded = Column(Boolean, default=False)
+    pinned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=now)
+    edited_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)  # disappearing messages
 
     sender = relationship("User", back_populates="sent_messages")

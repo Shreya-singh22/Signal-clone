@@ -50,6 +50,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
             conversation_id = data.get("conversation_id")
 
             if msg_type in ("typing", "stop_typing") and conversation_id:
+                # Respect the sender's privacy setting: if they've turned typing
+                # indicators off, never let peers know they're typing.
+                if msg_type == "typing" and not user.typing_indicators_enabled:
+                    continue
                 participant_ids = _conversation_peer_ids(db, conversation_id, user.id)
                 await manager.send_to_users(
                     participant_ids,

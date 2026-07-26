@@ -41,6 +41,11 @@ class UserOut(BaseModel):
     avatar_emoji: str
     is_online: bool
     last_seen_at: datetime
+    read_receipts_enabled: bool = True
+    typing_indicators_enabled: bool = True
+    notifications_enabled: bool = True
+    notification_preview_enabled: bool = True
+    notification_sound_enabled: bool = True
 
     class Config:
         from_attributes = True
@@ -58,6 +63,14 @@ class UpdateProfileRequest(BaseModel):
     avatar_emoji: Optional[str] = None
 
 
+class UpdateSettingsRequest(BaseModel):
+    read_receipts_enabled: Optional[bool] = None
+    typing_indicators_enabled: Optional[bool] = None
+    notifications_enabled: Optional[bool] = None
+    notification_preview_enabled: Optional[bool] = None
+    notification_sound_enabled: Optional[bool] = None
+
+
 # ---------- Contacts ----------
 
 
@@ -67,10 +80,20 @@ class AddContactRequest(BaseModel):
     nickname: Optional[str] = None
 
 
+class UpdateContactRequest(BaseModel):
+    is_blocked: Optional[bool] = None
+    nickname: Optional[str] = None
+
+
+class BlockUserRequest(BaseModel):
+    user_id: str
+
+
 class ContactOut(BaseModel):
     id: str
     user: UserOut
     nickname: Optional[str] = None
+    is_blocked: bool = False
 
     class Config:
         from_attributes = True
@@ -123,12 +146,36 @@ class MessageOut(BaseModel):
     reply_to_id: Optional[str] = None
     is_deleted: bool
     is_system: bool
+    is_edited: bool = False
+    is_forwarded: bool = False
+    pinned_at: Optional[datetime] = None
     created_at: datetime
+    edited_at: Optional[datetime] = None
     status: str = "sent"
     reactions: list[ReactionOut] = []
 
     class Config:
         from_attributes = True
+
+
+class EditMessageRequest(BaseModel):
+    content: str
+
+
+class PinMessageRequest(BaseModel):
+    pinned: bool
+
+
+class ReceiptDetail(BaseModel):
+    user: UserOut
+    status: str
+    updated_at: datetime
+
+
+class MessageInfoOut(BaseModel):
+    message: MessageOut
+    sender: UserOut
+    receipts: list[ReceiptDetail]
 
 
 class ConversationOut(BaseModel):
@@ -141,6 +188,7 @@ class ConversationOut(BaseModel):
     updated_at: datetime
     participants: list[ParticipantOut]
     last_message: Optional[MessageOut] = None
+    pinned_messages: list[MessageOut] = []
     unread_count: int = 0
     archived: bool = False
     muted: bool = False
@@ -159,6 +207,7 @@ class SendMessageRequest(BaseModel):
     attachment_url: Optional[str] = None
     attachment_type: Optional[str] = None
     attachment_name: Optional[str] = None
+    is_forwarded: Optional[bool] = False
 
 
 class AddMemberRequest(BaseModel):
