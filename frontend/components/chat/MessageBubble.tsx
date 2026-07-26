@@ -1,11 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import { API_URL } from "@/lib/api";
 import { formatTime, REACTION_EMOJIS } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import MessageStatusTicks from "./MessageStatusTicks";
+
+const pickerVariants = {
+  hidden: { opacity: 0, scale: 0.9, y: 6 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 320, damping: 28, mass: 1, staggerChildren: 0.025 },
+  },
+  exit: { opacity: 0, scale: 0.95, y: 4, transition: { duration: 0.1 } },
+};
+
+const emojiItemVariants = {
+  hidden: { opacity: 0, scale: 0.3, y: 4 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 500, damping: 15 } },
+};
 
 interface Props {
   message: Message;
@@ -23,6 +40,7 @@ interface Props {
   onPin: () => void;
   onInfo: () => void;
   onEnterSelectMode: () => void;
+  onJumpToReplied: (messageId: string) => void;
   currentUserId: string;
   selectMode: boolean;
   isSelected: boolean;
@@ -49,6 +67,7 @@ export default function MessageBubble({
   onPin,
   onInfo,
   onEnterSelectMode,
+  onJumpToReplied,
   currentUserId,
   selectMode,
   isSelected,
@@ -57,6 +76,20 @@ export default function MessageBubble({
   const [showPicker, setShowPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [justReacted, setJustReacted] = useState(false);
+  const [justDissolved, setJustDissolved] = useState(false);
+  const prevDeletedRef = useRef(message.is_deleted);
+
+  // Plays a collapse+fade once when a message transitions to deleted — whether from
+  // a manual delete or a disappearing-message timer expiring while the chat is open.
+  useEffect(() => {
+    if (!prevDeletedRef.current && message.is_deleted) {
+      setJustDissolved(true);
+      const t = window.setTimeout(() => setJustDissolved(false), 500);
+      prevDeletedRef.current = message.is_deleted;
+      return () => window.clearTimeout(t);
+    }
+    prevDeletedRef.current = message.is_deleted;
+  }, [message.is_deleted]);
 
   if (message.is_system) {
     return (
@@ -99,9 +132,9 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`animate-message-in group flex flex-col ${isOwn ? "items-end" : "items-start"} px-4 sm:px-8 ${
-        hasReactions ? "mb-3" : "mb-0.5"
-      }`}
+      className={`${justDissolved ? "animate-dissolve-out" : "animate-message-in"} group flex flex-col ${
+        isOwn ? "items-end" : "items-start"
+      } px-4 sm:px-8 ${hasReactions ? "mb-3" : "mb-0.5"}`}
     >
       {showSender && !isOwn && (
         <span className="text-xs font-semibold ml-1 mb-0.5" style={{ color: senderColor }}>
@@ -129,7 +162,7 @@ export default function MessageBubble({
             onClick={handleBubbleClick}
             className={`relative rounded-2xl px-3.5 py-2 ${selectMode ? "cursor-pointer" : ""} ${
               justReacted ? "animate-bubble-pop" : ""
-            } ${
+            } ${message.status === "failed" ? "animate-shake" : ""} ${
               isOwn
                 ? "bg-[var(--color-bubble-out)] text-white rounded-br-md"
                 : "bg-[var(--color-bubble-in)] text-[var(--color-text-primary)] rounded-bl-md"
@@ -160,8 +193,13 @@ export default function MessageBubble({
                   </p>
                 )}
                 {replyToMessage && (
-                  <div
-                    className={`mb-1.5 rounded-lg px-2.5 py-1.5 border-l-2 text-xs ${
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onJumpToReplied(replyToMessage.id);
+                    }}
+                    className={`block w-full text-left mb-1.5 rounded-lg px-2.5 py-1.5 border-l-2 text-xs transition hover:brightness-95 ${
                       isOwn
                         ? "bg-white/15 border-white/60"
                         : "bg-black/5 dark:bg-white/10 border-[var(--color-signal-blue)]"
@@ -173,7 +211,7 @@ export default function MessageBubble({
                         ? "This message was deleted"
                         : replyToMessage.content || (replyToMessage.attachment_url ? "📎 Attachment" : "")}
                     </p>
-                  </div>
+                  </button>
                 )}
                 {message.attachment_url && message.attachment_type === "image" && (
                   <a href={attachmentSrc(message.attachment_url)} target="_blank" rel="noreferrer">
@@ -253,7 +291,7 @@ export default function MessageBubble({
         </div>
 
         {!message.is_deleted && !selectMode && (
-          <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 relative">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-out flex items-center gap-0.5 relative">
             <button
               onClick={() => setShowPicker((s) => !s)}
               className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
@@ -288,29 +326,38 @@ export default function MessageBubble({
               </svg>
             </button>
 
-            {showPicker && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowPicker(false)} />
-                <div
-                  className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-full shadow-lg px-2 py-1.5 flex gap-1 animate-fade-in-up ${
-                    isOwn ? "right-0" : "left-0"
-                  }`}
-                >
-                  {REACTION_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => {
-                        onReact(emoji);
-                        setShowPicker(false);
-                      }}
-                      className={`text-lg hover:scale-125 transition ${myReaction?.emoji === emoji ? "scale-125" : ""}`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            <AnimatePresence>
+              {showPicker && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowPicker(false)} />
+                  <motion.div
+                    variants={pickerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-full shadow-lg px-2 py-1.5 flex gap-1 ${
+                      isOwn ? "right-0" : "left-0"
+                    }`}
+                  >
+                    {REACTION_EMOJIS.map((emoji) => (
+                      <motion.button
+                        key={emoji}
+                        variants={emojiItemVariants}
+                        whileHover={{ scale: 1.25 }}
+                        whileTap={{ scale: 1.45 }}
+                        onClick={() => {
+                          onReact(emoji);
+                          setShowPicker(false);
+                        }}
+                        className={`text-lg ${myReaction?.emoji === emoji ? "scale-125" : ""}`}
+                      >
+                        {emoji}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
 
             {showMenu && (
               <>

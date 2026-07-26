@@ -1,4 +1,6 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,10 +9,19 @@ from fastapi.staticfiles import StaticFiles
 from . import models
 from .database import Base, engine
 from .routers import auth, contacts, conversations, messages, upload, users, ws
+from .tasks import disappearing_messages_sweep_loop
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Signam API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    sweep_task = asyncio.create_task(disappearing_messages_sweep_loop())
+    yield
+    sweep_task.cancel()
+
+
+app = FastAPI(title="Signam API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { api, ApiError } from "@/lib/api";
 import { REACTION_EMOJIS } from "@/lib/format";
 import type { Message } from "@/lib/types";
@@ -10,6 +11,22 @@ interface PendingAttachment {
   previewUrl: string | null;
   isImage: boolean;
 }
+
+const pickerVariants = {
+  hidden: { opacity: 0, scale: 0.9, y: 6 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 320, damping: 28, mass: 1, staggerChildren: 0.012 },
+  },
+  exit: { opacity: 0, scale: 0.95, y: 4, transition: { duration: 0.1 } },
+};
+
+const emojiItemVariants = {
+  hidden: { opacity: 0, scale: 0.3, y: 4 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 500, damping: 15 } },
+};
 
 const QUICK_EMOJIS = ["😀", "😂", "😍", "👍", "🙏", "🎉", "😢", "😮", "🔥", "❤️", ...REACTION_EMOJIS].filter(
   (v, i, arr) => arr.indexOf(v) === i
@@ -249,26 +266,37 @@ export default function Composer({
               </svg>
             </button>
           </div>
-          {showEmoji && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-              <div className="absolute bottom-12 right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 w-56 animate-fade-in-up">
-                {QUICK_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      setText((t) => t + emoji);
-                      setShowEmoji(false);
-                    }}
-                    className="text-xl hover:bg-[var(--color-bg-tertiary)] rounded-lg p-1"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          <AnimatePresence>
+            {showEmoji && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
+                <motion.div
+                  variants={pickerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="absolute bottom-12 right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 w-56"
+                >
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <motion.button
+                      key={emoji}
+                      type="button"
+                      variants={emojiItemVariants}
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 1.4 }}
+                      onClick={() => {
+                        setText((t) => t + emoji);
+                        setShowEmoji(false);
+                      }}
+                      className="text-xl hover:bg-[var(--color-bg-tertiary)] rounded-lg p-1"
+                    >
+                      {emoji}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         <button

@@ -226,8 +226,22 @@ def archive_conversation(
     return _conversation_out(db, conv, current_user.id)
 
 
+def _format_disappearing_duration(seconds: int) -> str:
+    if not seconds:
+        return "off"
+    if seconds < 60:
+        return f"{seconds} seconds"
+    if seconds < 3600:
+        return f"{round(seconds / 60)} minutes"
+    if seconds < 86400:
+        return f"{round(seconds / 3600)} hours"
+    if seconds < 604800:
+        return f"{round(seconds / 86400)} days"
+    return f"{round(seconds / 604800)} weeks"
+
+
 @router.patch("/{conversation_id}", response_model=schemas.ConversationOut)
-def update_conversation(
+async def update_conversation(
     conversation_id: str,
     payload: schemas.UpdateConversationRequest,
     current_user: User = Depends(get_current_user),
@@ -239,12 +253,38 @@ def update_conversation(
         raise HTTPException(status_code=403, detail="Only admins can edit the group")
     if payload.name is not None:
         conv.name = payload.name
-    if payload.disappearing_seconds is not None:
+    disappearing_changed = (
+        payload.disappearing_seconds is not None and payload.disappearing_seconds != conv.disappearing_seconds
+    )
+    if disappearing_changed:
         conv.disappearing_seconds = payload.disappearing_seconds
     conv.updated_at = datetime.now(timezone.utc)
+    if disappearing_changed:
+        # A disappearing-timer change is a conversation event, not real chat
+        # content — recorded the same way as the other system messages (group
+        # created, member added/removed) rather than anything encryption-relevant.
+        db.add(
+            Message(
+                conversation_id=conversation_id,
+                sender_id=current_user.id,
+                content=(
+                    f"{current_user.display_name} set disappearing messages to "
+                    f"{_format_disappearing_duration(conv.disappearing_seconds)}"
+                    if conv.disappearing_seconds
+                    else f"{current_user.display_name} turned off disappearing messages"
+                ),
+                is_system=True,
+            )
+        )
     db.commit()
     db.refresh(conv)
-    return _conversation_out(db, conv, current_user.id)
+    result = _conversation_out(db, conv, current_user.id)
+    if disappearing_changed:
+        member_ids = [p.user_id for p in conv.participants]
+        await manager.send_to_users(
+            member_ids, {"type": "conversation_update", "conversation": result.model_dump(mode="json")}
+        )
+    return result
 
 
 @router.post("/{conversation_id}/members", response_model=schemas.ConversationOut)

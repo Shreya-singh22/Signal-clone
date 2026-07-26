@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as DbSession
@@ -14,9 +16,29 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # in-memory pending OTPs for the mocked verification flow: phone_number -> otp
 _pending_otps: dict[str, str] = {}
 
+# Basic abuse-prevention for the OTP endpoint: this is a real, non-cryptographic
+# rate limit (enumeration/spam protection), not part of the mocked-encryption
+# simplification — an in-memory sliding window is fine for a single-process demo.
+_OTP_RATE_LIMIT = 5
+_OTP_RATE_WINDOW_SECONDS = 600
+_otp_request_log: dict[str, list[float]] = {}
+
+
+def _check_otp_rate_limit(phone_number: str) -> None:
+    now = time.monotonic()
+    window_start = now - _OTP_RATE_WINDOW_SECONDS
+    recent = [t for t in _otp_request_log.get(phone_number, []) if t > window_start]
+    if len(recent) >= _OTP_RATE_LIMIT:
+        raise HTTPException(
+            status_code=429, detail="Too many verification code requests. Try again in a few minutes."
+        )
+    recent.append(now)
+    _otp_request_log[phone_number] = recent
+
 
 @router.post("/otp/request", response_model=schemas.OtpResponse)
 def request_otp(payload: schemas.OtpRequest):
+    _check_otp_rate_limit(payload.phone_number)
     _pending_otps[payload.phone_number] = MOCK_OTP
     return schemas.OtpResponse(
         message=f"A verification code was sent to {payload.phone_number} (mocked).",

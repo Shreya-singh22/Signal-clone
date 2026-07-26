@@ -274,6 +274,7 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
                   setSelectMode(true);
                   setSelectedIds(new Set([message.id]));
                 }}
+                onJumpToReplied={scrollToMessage}
                 currentUserId={user.id}
                 selectMode={selectMode}
                 isSelected={selectedIds.has(message.id)}
