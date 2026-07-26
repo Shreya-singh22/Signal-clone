@@ -11,6 +11,7 @@ import NewChatModal from "@/components/chat/NewChatModal";
 import NewGroupModal from "@/components/chat/NewGroupModal";
 import ChatInfoModal from "@/components/chat/ChatInfoModal";
 import AddMembersModal from "@/components/chat/AddMembersModal";
+import AddContactModal from "@/components/chat/AddContactModal";
 import SettingsModal from "@/components/chat/SettingsModal";
 
 type ModalState =
@@ -19,7 +20,8 @@ type ModalState =
   | { type: "newGroup" }
   | { type: "settings" }
   | { type: "chatInfo" }
-  | { type: "addMembers" };
+  | { type: "addMembers" }
+  | { type: "addContact" };
 
 export default function ChatShell() {
   const { user, authLoading, conversations } = useApp();
@@ -74,6 +76,7 @@ export default function ChatShell() {
               onSelect={selectConversation}
               onNewChat={() => setModal({ type: "newChat" })}
               onNewGroup={() => setModal({ type: "newGroup" })}
+              onAddContact={() => setModal({ type: "addContact" })}
             />
           </div>
 
@@ -123,6 +126,9 @@ export default function ChatShell() {
       )}
       {modal.type === "addMembers" && selectedConversation && (
         <AddMembersModal conversation={selectedConversation} onClose={() => setModal({ type: "chatInfo" })} />
+      )}
+      {modal.type === "addContact" && (
+        <AddContactModal onClose={() => setModal({ type: "none" })} onMessage={selectConversation} />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Avatar from "@/components/Avatar";
 import { useApp } from "@/lib/store";
 import ConversationListItem from "./ConversationListItem";
 
@@ -9,13 +10,21 @@ interface Props {
   onSelect: (id: string) => void;
   onNewChat: () => void;
   onNewGroup: () => void;
+  onAddContact: () => void;
 }
 
-export default function ConversationListPanel({ selectedId, onSelect, onNewChat, onNewGroup }: Props) {
-  const { user, conversations } = useApp();
+export default function ConversationListPanel({
+  selectedId,
+  onSelect,
+  onNewChat,
+  onNewGroup,
+  onAddContact,
+}: Props) {
+  const { user, conversations, contacts, createDirect, pushToast } = useApp();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [startingContactId, setStartingContactId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = conversations;
@@ -32,6 +41,36 @@ export default function ConversationListPanel({ selectedId, onSelect, onNewChat,
     }
     return list;
   }, [conversations, filter, query]);
+
+  // Contacts you haven't started a direct conversation with yet, matching the search —
+  // surfaces people from your address book, not just existing chats.
+  const matchingContacts = useMemo(() => {
+    if (!query.trim() || !user) return [];
+    const q = query.trim().toLowerCase();
+    const existingDirectUserIds = new Set(
+      conversations
+        .filter((c) => c.type === "direct")
+        .map((c) => c.participants.find((p) => p.user.id !== user.id)?.user.id)
+    );
+    return contacts.filter(
+      (c) =>
+        !existingDirectUserIds.has(c.user.id) &&
+        (c.user.display_name.toLowerCase().includes(q) || c.user.username.toLowerCase().includes(q))
+    );
+  }, [contacts, query, conversations, user]);
+
+  async function startChatWithContact(contactUserId: string) {
+    setStartingContactId(contactUserId);
+    try {
+      const conv = await createDirect(contactUserId);
+      onSelect(conv.id);
+      setQuery("");
+    } catch {
+      pushToast("Couldn't start chat");
+    } finally {
+      setStartingContactId(null);
+    }
+  }
 
   if (!user) return null;
 
@@ -72,6 +111,15 @@ export default function ConversationListPanel({ selectedId, onSelect, onNewChat,
                 >
                   New group
                 </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onAddContact();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition"
+                >
+                  New contact
+                </button>
               </div>
             </>
           )}
@@ -110,9 +158,9 @@ export default function ConversationListPanel({ selectedId, onSelect, onNewChat,
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4">
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && matchingContacts.length === 0 ? (
           <div className="text-center text-sm text-[var(--color-text-secondary)] mt-10 px-6">
-            {query ? "No chats match your search." : "No conversations yet. Start one!"}
+            {query ? "No chats or contacts match your search." : "No conversations yet. Start one!"}
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">
@@ -125,6 +173,39 @@ export default function ConversationListPanel({ selectedId, onSelect, onNewChat,
                 onClick={() => onSelect(c.id)}
               />
             ))}
+
+            {matchingContacts.length > 0 && (
+              <>
+                <p className="text-xs font-medium text-[var(--color-text-secondary)] px-3 pt-3 pb-1">
+                  Contacts
+                </p>
+                {matchingContacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => startChatWithContact(contact.user.id)}
+                    disabled={startingContactId === contact.user.id}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition hover:bg-[var(--color-bg-tertiary)] disabled:opacity-60"
+                  >
+                    <Avatar
+                      name={contact.user.display_name}
+                      color={contact.user.avatar_color}
+                      emoji={contact.user.avatar_emoji}
+                      size={48}
+                      showPresence
+                      online={contact.user.is_online}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                        {contact.user.display_name}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-secondary)] truncate">
+                        @{contact.user.username}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
