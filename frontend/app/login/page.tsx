@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { useApp, ApiError } from "@/lib/store";
 
 const DEMO_ACCOUNTS = [
-  { name: "Alice", phone: "+15551234567" },
-  { name: "Bob", phone: "+15551234568" },
-  { name: "Carol", phone: "+15551234569" },
-  { name: "Dave", phone: "+15551234570" },
-  { name: "Erin", phone: "+15551234571" },
+  { name: "Alice", phone: "+919876543201" },
+  { name: "Bob", phone: "+919876543202" },
+  { name: "Carol", phone: "+919876543203" },
+  { name: "Dave", phone: "+919876543204" },
+  { name: "Erin", phone: "+919876543205" },
 ];
 
 export default function LoginPage() {
@@ -64,7 +64,7 @@ export default function LoginPage() {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--color-signal-blue)] transition"
-              placeholder="+1 555 123 4567"
+              placeholder="+91 98765 43210"
               required
             />
             <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">

@@ -35,7 +35,7 @@ def run():
         dict(
             username="alice",
             display_name="Alice Johnson",
-            phone_number="+15551234567",
+            phone_number="+919876543201",
             about="Building Signam ✨",
             avatar_color="#2C6BED",
             avatar_emoji="👩‍💻",
@@ -43,7 +43,7 @@ def run():
         dict(
             username="bob",
             display_name="Bob Smith",
-            phone_number="+15551234568",
+            phone_number="+919876543202",
             about="Coffee first, code second",
             avatar_color="#3AA3E3",
             avatar_emoji="🧑‍🎨",
@@ -51,7 +51,7 @@ def run():
         dict(
             username="carol",
             display_name="Carol Davis",
-            phone_number="+15551234569",
+            phone_number="+919876543203",
             about="Product manager & plant parent",
             avatar_color="#D0895F",
             avatar_emoji="🌿",
@@ -59,7 +59,7 @@ def run():
         dict(
             username="dave",
             display_name="Dave Wilson",
-            phone_number="+15551234570",
+            phone_number="+919876543204",
             about="On a boat 🚤",
             avatar_color="#6C63C7",
             avatar_emoji="🎧",
@@ -67,7 +67,7 @@ def run():
         dict(
             username="erin",
             display_name="Erin Baker",
-            phone_number="+15551234571",
+            phone_number="+919876543205",
             about="Signal > texting",
             avatar_color="#4CAF7D",
             avatar_emoji="📚",

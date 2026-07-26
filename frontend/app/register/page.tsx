@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const { setSession } = useApp();
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
-  const [phone, setPhone] = useState("+1");
+  const [phone, setPhone] = useState("+91");
   const [devOtp, setDevOtp] = useState("");
   const [otp, setOtp] = useState("");
   const [username, setUsername] = useState("");
@@ -104,7 +104,7 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--color-signal-blue)] transition"
-                  placeholder="+1 555 123 4567"
+                  placeholder="+91 98765 43210"
                   required
                 />
                 <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">
