@@ -7,7 +7,6 @@ interface NavRailProps {
   active: "chats" | "calls" | "stories";
   onSelect: (tab: "chats" | "calls" | "stories") => void;
   onOpenSettings: () => void;
-  settingsActive?: boolean;
 }
 
 export function SettingsGearIcon({ size = 20 }: { size?: number }) {
@@ -45,7 +44,7 @@ function NavIcon({
   );
 }
 
-export default function NavRail({ active, onSelect, onOpenSettings, settingsActive }: NavRailProps) {
+export default function NavRail({ active, onSelect, onOpenSettings }: NavRailProps) {
   const { user } = useApp();
   if (!user) return null;
 
@@ -72,12 +71,6 @@ export default function NavRail({ active, onSelect, onOpenSettings, settingsActi
           <circle cx="12" cy="12" r="9" />
           <circle cx="12" cy="12" r="3" />
         </svg>
-      </NavIcon>
-
-      <div className="flex-1" />
-
-      <NavIcon label="Settings" active={settingsActive} onClick={onOpenSettings}>
-        <SettingsGearIcon />
       </NavIcon>
     </div>
   );

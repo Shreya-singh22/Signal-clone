@@ -90,7 +90,6 @@ export default function ChatShell() {
             setShowSettings(true);
           }
         }}
-        settingsActive={showSettings}
       />
 
       {showSettings ? (
