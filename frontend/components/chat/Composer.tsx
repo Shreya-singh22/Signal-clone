@@ -1,0 +1,170 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { api, ApiError } from "@/lib/api";
+import { REACTION_EMOJIS } from "@/lib/format";
+import type { Message } from "@/lib/types";
+
+const QUICK_EMOJIS = ["😀", "😂", "😍", "👍", "🙏", "🎉", "😢", "😮", "🔥", "❤️", ...REACTION_EMOJIS].filter(
+  (v, i, arr) => arr.indexOf(v) === i
+);
+
+interface Props {
+  replyTo: Message | null;
+  replyToSenderName?: string;
+  onCancelReply: () => void;
+  onSend: (
+    content: string,
+    opts?: { attachment_url?: string; attachment_type?: string; attachment_name?: string }
+  ) => void;
+  onTyping: () => void;
+  onStopTyping: () => void;
+  pushToast: (title: string, body?: string) => void;
+}
+
+export default function Composer({
+  replyTo,
+  replyToSenderName,
+  onCancelReply,
+  onSend,
+  onTyping,
+  onStopTyping,
+  pushToast,
+}: Props) {
+  const [text, setText] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    onSend(trimmed);
+    setText("");
+    onStopTyping();
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await api.upload(file);
+      onSend("", { attachment_url: res.url, attachment_type: res.type, attachment_name: res.name });
+    } catch (err) {
+      pushToast("Upload failed", err instanceof ApiError ? err.message : "Please try a different file");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
+      {replyTo && (
+        <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] rounded-lg px-3 py-2 mb-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-[var(--color-signal-blue)]">
+              Replying to {replyToSenderName}
+            </p>
+            <p className="text-xs text-[var(--color-text-secondary)] truncate">
+              {replyTo.content || (replyTo.attachment_url ? "📎 Attachment" : "")}
+            </p>
+          </div>
+          <button
+            onClick={onCancelReply}
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] shrink-0 ml-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          title="Attach file"
+          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-50"
+        >
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+          </svg>
+        </button>
+
+        <div className="relative flex-1">
+          <div className="flex items-end gap-1 bg-[var(--color-bg-tertiary)] rounded-2xl px-3 py-1.5">
+            <textarea
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (e.target.value.trim()) onTyping();
+                else onStopTyping();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              rows={1}
+              placeholder={uploading ? "Uploading…" : "Type a message"}
+              disabled={uploading}
+              className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 max-h-32 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)]"
+              style={{ minHeight: "22px" }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowEmoji((s) => !s)}
+              className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 transition mb-0.5"
+              title="Emoji"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                <line x1="9" y1="9" x2="9.01" y2="9" />
+                <line x1="15" y1="9" x2="15.01" y2="9" />
+              </svg>
+            </button>
+          </div>
+          {showEmoji && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
+              <div className="absolute bottom-12 right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 w-56 animate-fade-in-up">
+                {QUICK_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      setText((t) => t + emoji);
+                      setShowEmoji(false);
+                    }}
+                    className="text-xl hover:bg-[var(--color-bg-tertiary)] rounded-lg p-1"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={!text.trim()}
+          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-signal-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-signal-blue-dark)] transition"
+          title="Send"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+          </svg>
+        </button>
+      </form>
+    </div>
+  );
+}

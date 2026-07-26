@@ -1,0 +1,18 @@
+# Python / backend
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/signam.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.pyc
+
+# Node / frontend
+frontend/node_modules/
+frontend/.next/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# OS
+.DS_Store

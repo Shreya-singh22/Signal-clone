@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-signal-blue: #3a76f0;
+  --color-signal-blue-dark: #2c6bed;
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f6f6f6;
+  --color-bg-tertiary: #eeeeef;
+  --color-border: #e4e4e5;
+  --color-text-primary: #1b1c1f;
+  --color-text-secondary: #6b6b6f;
+  --color-bubble-in: #f2f2f2;
+  --color-bubble-out: #2c6bed;
+}
+
+.dark {
+  --color-bg: #0f0f11;
+  --color-bg-secondary: #17181a;
+  --color-bg-tertiary: #232427;
+  --color-border: #2c2d30;
+  --color-text-primary: #f0f0f2;
+  --color-text-secondary: #97979c;
+  --color-bubble-in: #2c2d30;
+  --color-bubble-out: #3a76f0;
+}
+
+@theme inline {
+  --color-signal-blue: var(--color-signal-blue);
+  --color-signal-blue-dark: var(--color-signal-blue-dark);
+  --color-bg: var(--color-bg);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-tertiary: var(--color-bg-tertiary);
+  --color-border: var(--color-border);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-bubble-in: var(--color-bubble-in);
+  --color-bubble-out: var(--color-bubble-out);
+  --font-sans: var(--font-inter);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.15s ease-out;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.typing-dot {
+  animation: typing-bounce 1.2s infinite;
+}
