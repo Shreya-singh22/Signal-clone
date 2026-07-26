@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import NavRail from "@/components/chat/NavRail";
@@ -12,13 +12,12 @@ import NewGroupModal from "@/components/chat/NewGroupModal";
 import ChatInfoModal from "@/components/chat/ChatInfoModal";
 import AddMembersModal from "@/components/chat/AddMembersModal";
 import AddContactModal from "@/components/chat/AddContactModal";
-import SettingsModal from "@/components/chat/SettingsModal";
+import SettingsPage, { type SettingsPageHandle } from "@/components/chat/SettingsPage";
 
 type ModalState =
   | { type: "none" }
   | { type: "newChat" }
   | { type: "newGroup" }
-  | { type: "settings" }
   | { type: "chatInfo" }
   | { type: "addMembers" }
   | { type: "addContact" };
@@ -29,7 +28,9 @@ export default function ChatShell() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [navTab, setNavTab] = useState<"chats" | "calls" | "stories">("chats");
   const [modal, setModal] = useState<ModalState>({ type: "none" });
+  const [showSettings, setShowSettings] = useState(false);
   const [mobileListVisible, setMobileListVisible] = useState(true);
+  const settingsRef = useRef<SettingsPageHandle>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -46,7 +47,7 @@ export default function ChatShell() {
         setModal({ type: "newChat" });
       } else if (e.key === ",") {
         e.preventDefault();
-        setModal({ type: "settings" });
+        setShowSettings(true);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -72,12 +73,29 @@ export default function ChatShell() {
     <div className="h-full flex">
       <NavRail
         active={navTab}
-        onSelect={setNavTab}
-        onOpenSettings={() => setModal({ type: "settings" })}
-        onOpenProfile={() => setModal({ type: "settings" })}
+        onSelect={(t) => {
+          if (showSettings) {
+            settingsRef.current?.requestLeave(() => {
+              setShowSettings(false);
+              setNavTab(t);
+            });
+          } else {
+            setNavTab(t);
+          }
+        }}
+        onOpenSettings={() => {
+          if (showSettings) {
+            settingsRef.current?.requestLeave(() => setShowSettings(false));
+          } else {
+            setShowSettings(true);
+          }
+        }}
+        settingsActive={showSettings}
       />
 
-      {navTab !== "chats" ? (
+      {showSettings ? (
+        <SettingsPage ref={settingsRef} onClose={() => setShowSettings(false)} />
+      ) : navTab !== "chats" ? (
         <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)] text-center px-6">
           <div>
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)] capitalize">{navTab}</h2>
@@ -133,7 +151,6 @@ export default function ChatShell() {
       {modal.type === "newGroup" && (
         <NewGroupModal onClose={() => setModal({ type: "none" })} onCreated={selectConversation} />
       )}
-      {modal.type === "settings" && <SettingsModal onClose={() => setModal({ type: "none" })} />}
       {modal.type === "chatInfo" && selectedConversation && (
         <ChatInfoModal
           conversation={selectedConversation}

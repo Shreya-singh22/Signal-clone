@@ -7,7 +7,16 @@ interface NavRailProps {
   active: "chats" | "calls" | "stories";
   onSelect: (tab: "chats" | "calls" | "stories") => void;
   onOpenSettings: () => void;
-  onOpenProfile: () => void;
+  settingsActive?: boolean;
+}
+
+export function SettingsGearIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
 }
 
 function NavIcon({
@@ -36,13 +45,13 @@ function NavIcon({
   );
 }
 
-export default function NavRail({ active, onSelect, onOpenSettings, onOpenProfile }: NavRailProps) {
+export default function NavRail({ active, onSelect, onOpenSettings, settingsActive }: NavRailProps) {
   const { user } = useApp();
   if (!user) return null;
 
   return (
     <div className="hidden sm:flex w-[72px] shrink-0 flex-col items-center py-4 gap-3 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)]">
-      <button onClick={onOpenProfile} title="Your profile" className="mb-2">
+      <button onClick={onOpenSettings} title="Your profile" className="mb-2">
         <Avatar name={user.display_name} color={user.avatar_color} emoji={user.avatar_emoji} size={40} />
       </button>
 
@@ -67,11 +76,8 @@ export default function NavRail({ active, onSelect, onOpenSettings, onOpenProfil
 
       <div className="flex-1" />
 
-      <NavIcon label="Settings" onClick={onOpenSettings}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
+      <NavIcon label="Settings" active={settingsActive} onClick={onOpenSettings}>
+        <SettingsGearIcon />
       </NavIcon>
     </div>
   );
