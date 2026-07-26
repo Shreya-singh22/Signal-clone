@@ -12,6 +12,8 @@ interface Props {
   isTyping: boolean;
   onOpenInfo: () => void;
   onArchived: () => void;
+  onToggleSearch: () => void;
+  searchOpen: boolean;
   pushToast: (title: string, body?: string) => void;
 }
 
@@ -21,6 +23,8 @@ export default function ChatHeader({
   isTyping,
   onOpenInfo,
   onArchived,
+  onToggleSearch,
+  searchOpen,
   pushToast,
 }: Props) {
   const { archiveConversation } = useApp();
@@ -93,6 +97,20 @@ export default function ChatHeader({
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M23 7l-7 5 7 5V7z" />
             <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+          </svg>
+        </button>
+        <button
+          onClick={onToggleSearch}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition ${
+            searchOpen
+              ? "bg-[var(--color-signal-blue)] text-white"
+              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+          }`}
+          title="Search in conversation"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
           </svg>
         </button>
         <div className="relative">

@@ -1,9 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { REACTION_EMOJIS } from "@/lib/format";
 import type { Message } from "@/lib/types";
+
+interface PendingAttachment {
+  file: File;
+  previewUrl: string | null;
+  isImage: boolean;
+}
 
 const QUICK_EMOJIS = ["😀", "😂", "😍", "👍", "🙏", "🎉", "😢", "😮", "🔥", "❤️", ...REACTION_EMOJIS].filter(
   (v, i, arr) => arr.indexOf(v) === i
@@ -41,8 +47,15 @@ export default function Composer({
   const [uploading, setUploading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [lastEditingId, setLastEditingId] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditing = !!editingMessage;
+
+  useEffect(() => {
+    return () => {
+      if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+    };
+  }, [pendingAttachment]);
 
   // Adjust the draft text when a *different* message enters edit mode — done during
   // render (React's recommended pattern for this) rather than in an effect, since
@@ -54,32 +67,56 @@ export default function Composer({
     setLastEditingId(null);
   }
 
-  function handleSubmit(e?: React.FormEvent) {
+  async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed) return;
+
     if (isEditing) {
+      if (!trimmed) return;
       onSaveEdit(trimmed);
-    } else {
-      onSend(trimmed);
+      setText("");
+      onStopTyping();
+      return;
     }
+
+    if (pendingAttachment) {
+      setUploading(true);
+      try {
+        const res = await api.upload(pendingAttachment.file);
+        onSend(trimmed, { attachment_url: res.url, attachment_type: res.type, attachment_name: res.name });
+        if (pendingAttachment.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+        setPendingAttachment(null);
+        setText("");
+        onStopTyping();
+      } catch (err) {
+        pushToast("Upload failed", err instanceof ApiError ? err.message : "Please try a different file");
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
+    if (!trimmed) return;
+    onSend(trimmed);
     setText("");
     onStopTyping();
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setUploading(true);
-    try {
-      const res = await api.upload(file);
-      onSend("", { attachment_url: res.url, attachment_type: res.type, attachment_name: res.name });
-    } catch (err) {
-      pushToast("Upload failed", err instanceof ApiError ? err.message : "Please try a different file");
-    } finally {
-      setUploading(false);
-    }
+    const isImage = file.type.startsWith("image/");
+    setPendingAttachment({
+      file,
+      previewUrl: isImage ? URL.createObjectURL(file) : null,
+      isImage,
+    });
+  }
+
+  function cancelAttachment() {
+    if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+    setPendingAttachment(null);
   }
 
   return (
@@ -128,12 +165,47 @@ export default function Composer({
           </button>
         </div>
       )}
+      {!isEditing && pendingAttachment && (
+        <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] rounded-lg px-3 py-2 mb-2">
+          <div className="min-w-0 flex items-center gap-3">
+            {pendingAttachment.isImage && pendingAttachment.previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local blob preview, no next/image loader needed
+              <img
+                src={pendingAttachment.previewUrl}
+                alt="Attachment preview"
+                className="w-12 h-12 rounded-lg object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-black/10 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                  <path d="M13 2v7h7" />
+                </svg>
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[var(--color-signal-blue)]">Ready to send</p>
+              <p className="text-xs text-[var(--color-text-secondary)] truncate">{pendingAttachment.file.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={cancelAttachment}
+            disabled={uploading}
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] shrink-0 ml-2 disabled:opacity-40"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
         <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || isEditing}
+          disabled={uploading || isEditing || !!pendingAttachment}
           title="Attach file"
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-30"
         >
@@ -158,7 +230,7 @@ export default function Composer({
                 }
               }}
               rows={1}
-              placeholder={uploading ? "Uploading…" : "Type a message"}
+              placeholder={uploading ? "Uploading…" : pendingAttachment ? "Add a caption…" : "Type a message"}
               disabled={uploading}
               className="flex-1 resize-none bg-transparent text-sm outline-none py-1.5 max-h-32 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)]"
               style={{ minHeight: "22px" }}
@@ -201,7 +273,7 @@ export default function Composer({
 
         <button
           type="submit"
-          disabled={!text.trim()}
+          disabled={uploading || (!text.trim() && !pendingAttachment)}
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-signal-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-signal-blue-dark)] transition"
           title={isEditing ? "Save" : "Send"}
         >

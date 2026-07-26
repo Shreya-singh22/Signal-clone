@@ -12,6 +12,7 @@ import PinnedBanner from "./PinnedBanner";
 import SelectionBar from "./SelectionBar";
 import ForwardMessageModal from "./ForwardMessageModal";
 import MessageInfoModal from "./MessageInfoModal";
+import MessageSearchBar from "./MessageSearchBar";
 
 interface Props {
   conversationId: string;
@@ -45,6 +46,9 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
   const [forwardMessageTarget, setForwardMessageTarget] = useState<Message | null>(null);
   const [infoMessageId, setInfoMessageId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const conversation = conversations.find((c) => c.id === conversationId);
@@ -84,6 +88,31 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
     });
   }, [convMessages, conversationType]);
 
+  const searchMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return convMessages.filter(
+      (m) => !m.is_deleted && !m.is_system && m.content && m.content.toLowerCase().includes(q)
+    );
+  }, [convMessages, searchQuery]);
+
+  function scrollToMessage(id: string) {
+    const el = messageRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(id);
+    window.setTimeout(() => setHighlightedId((cur) => (cur === id ? null : cur)), 1600);
+  }
+
+  useEffect(() => {
+    // Resetting the match cursor and jumping to the first hit is a direct response
+    // to the query changing, not a render-cascade concern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveMatchIndex(0);
+    if (searchMatches.length > 0) scrollToMessage(searchMatches[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
   if (!conversation || !user) return null;
 
   const otherUser =
@@ -104,12 +133,17 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
     return convMessages.find((m) => m.id === id) || null;
   }
 
-  function scrollToMessage(id: string) {
-    const el = messageRefs.current.get(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    setHighlightedId(id);
-    window.setTimeout(() => setHighlightedId((cur) => (cur === id ? null : cur)), 1600);
+  function goToMatch(index: number) {
+    if (searchMatches.length === 0) return;
+    const wrapped = (index + searchMatches.length) % searchMatches.length;
+    setActiveMatchIndex(wrapped);
+    scrollToMessage(searchMatches[wrapped].id);
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setActiveMatchIndex(0);
   }
 
   function toggleSelected(id: string) {
@@ -145,8 +179,22 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
         isTyping={typingUserIds.length > 0}
         onOpenInfo={onOpenInfo}
         onArchived={onArchived}
+        onToggleSearch={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+        searchOpen={searchOpen}
         pushToast={pushToast}
       />
+
+      {searchOpen && (
+        <MessageSearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          matchCount={searchMatches.length}
+          activeIndex={activeMatchIndex}
+          onNext={() => goToMatch(activeMatchIndex + 1)}
+          onPrev={() => goToMatch(activeMatchIndex - 1)}
+          onClose={closeSearch}
+        />
+      )}
 
       {conversation.pinned_messages.length > 0 && (
         <PinnedBanner
