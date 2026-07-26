@@ -1,6 +1,7 @@
 import Avatar from "@/components/Avatar";
 import { formatListTimestamp } from "@/lib/format";
 import type { Conversation, User } from "@/lib/types";
+import MessageStatusTicks from "./MessageStatusTicks";
 
 interface Props {
   conversation: Conversation;
@@ -34,6 +35,9 @@ export default function ConversationListItem({
       ? conversation.participants.find((p) => p.user.id !== currentUser.id)?.user
       : undefined;
   const isOnline = other?.is_online;
+  const lastMessage = conversation.last_message;
+  const showOwnStatusTicks =
+    lastMessage && !lastMessage.is_system && lastMessage.sender_id === currentUser.id;
 
   return (
     <button
@@ -93,9 +97,13 @@ export default function ConversationListItem({
             <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-signal-blue)] text-white text-[10px] font-semibold flex items-center justify-center">
               {conversation.unread_count > 99 ? "99+" : conversation.unread_count}
             </span>
+          ) : conversation.marked_unread ? (
+            <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--color-signal-blue)]" />
           ) : (
-            conversation.marked_unread && (
-              <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--color-signal-blue)]" />
+            showOwnStatusTicks && (
+              <span className="shrink-0 text-[var(--color-text-secondary)] flex items-center">
+                <MessageStatusTicks status={lastMessage.status} />
+              </span>
             )
           )}
         </div>
