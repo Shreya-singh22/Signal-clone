@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session as DbSession
 
 from .. import schemas
@@ -57,9 +58,14 @@ def register(payload: schemas.RegisterRequest, db: DbSession = Depends(get_db)):
 
 @router.post("/login", response_model=schemas.AuthResponse)
 def login(payload: schemas.LoginRequest, db: DbSession = Depends(get_db)):
-    user = db.query(User).filter(User.username == payload.username).first()
+    identifier = payload.identifier.strip()
+    user = (
+        db.query(User)
+        .filter(or_(User.phone_number == identifier, User.username == identifier))
+        .first()
+    )
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid phone number/username or password")
 
     session = SessionModel(user_id=user.id)
     db.add(session)

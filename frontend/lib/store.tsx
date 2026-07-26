@@ -97,7 +97,7 @@ interface AppContextValue {
   toasts: Toast[];
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
-  login: (username: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (token: string, user: User) => void;
   refreshConversations: () => Promise<void>;
@@ -234,8 +234,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshConversations, refreshContacts]);
 
   const login = useCallback(
-    async (username: string, password: string) => {
-      const res = await api.login(username, password);
+    async (identifier: string, password: string) => {
+      const res = await api.login(identifier, password);
       setSession(res.token, res.user);
     },
     [setSession]

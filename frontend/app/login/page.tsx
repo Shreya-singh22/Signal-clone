@@ -5,10 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp, ApiError } from "@/lib/store";
 
+const DEMO_ACCOUNTS = [
+  { name: "Alice", phone: "+15551234567" },
+  { name: "Bob", phone: "+15551234568" },
+  { name: "Carol", phone: "+15551234569" },
+  { name: "Dave", phone: "+15551234570" },
+  { name: "Erin", phone: "+15551234571" },
+];
+
 export default function LoginPage() {
   const { login } = useApp();
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +26,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(username.trim(), password);
+      await login(identifier.trim(), password);
       router.replace("/chat");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -27,8 +35,8 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemo(name: string) {
-    setUsername(name);
+  function fillDemo(phone: string) {
+    setIdentifier(phone);
     setPassword("password123");
   }
 
@@ -49,16 +57,19 @@ export default function LoginPage() {
         >
           <div>
             <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
-              Username
+              Phone number
             </label>
             <input
               autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--color-signal-blue)] transition"
-              placeholder="alice"
+              placeholder="+1 555 123 4567"
               required
             />
+            <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">
+              You can also sign in with your @username.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
@@ -88,14 +99,14 @@ export default function LoginPage() {
             Demo accounts (password: password123)
           </p>
           <div className="flex flex-wrap gap-2">
-            {["alice", "bob", "carol", "dave", "erin"].map((name) => (
+            {DEMO_ACCOUNTS.map((account) => (
               <button
-                key={name}
-                onClick={() => fillDemo(name)}
+                key={account.phone}
+                onClick={() => fillDemo(account.phone)}
                 type="button"
                 className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-bg-tertiary)] hover:opacity-80 transition"
               >
-                {name}
+                {account.name}
               </button>
             ))}
           </div>

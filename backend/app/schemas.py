@@ -27,7 +27,7 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
+    identifier: str  # phone number or username
     password: str
 
 
