@@ -189,7 +189,7 @@ export default function ChatPane({ conversationId, onOpenInfo, onArchived }: Pro
   }
 
   return (
-    <div className="flex flex-col h-full min-w-0 flex-1 bg-[var(--color-bg)]">
+    <div className="flex flex-col h-full min-h-0 min-w-0 flex-1 bg-[var(--color-bg)]">
       <ChatHeader
         conversation={conversation}
         currentUser={user}

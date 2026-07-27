@@ -13,7 +13,7 @@ export default function SelectionBar({ count, canDelete, onCancel, onDelete, onF
     <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
       <button
         onClick={onCancel}
-        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition"
+        className="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 6 6 18" />
@@ -27,7 +27,7 @@ export default function SelectionBar({ count, canDelete, onCancel, onDelete, onF
         onClick={onForward}
         disabled={count === 0}
         title="Forward"
-        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition disabled:opacity-40"
+        className="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition disabled:opacity-40"
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15 17 20 12 15 7" />
@@ -38,7 +38,7 @@ export default function SelectionBar({ count, canDelete, onCancel, onDelete, onF
         onClick={onDelete}
         disabled={count === 0 || !canDelete}
         title={canDelete ? "Delete" : "Can only delete your own messages"}
-        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-red-500 transition disabled:opacity-40"
+        className="w-10 h-10 md:w-8 md:h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-red-500 transition disabled:opacity-40"
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 6h18" />

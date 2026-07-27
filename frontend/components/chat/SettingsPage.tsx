@@ -163,7 +163,8 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-center text-sm font-semibold text-[var(--color-text-primary)] mb-6">{children}</h2>;
+  // Redundant on mobile, where the back-bar above already names the section.
+  return <h2 className="hidden md:block text-center text-sm font-semibold text-[var(--color-text-primary)] mb-6">{children}</h2>;
 }
 
 function ComingSoon({ description }: { description: string }) {
@@ -366,6 +367,10 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("profile");
+  // Below the tablet breakpoint the nav list and the active section collapse into a
+  // single pane (mirroring the chat list/chat-pane pattern) — this tracks which one
+  // is showing. Irrelevant at md+, where both panes are always visible side by side.
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [pendingResume, setPendingResume] = useState<(() => void) | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -395,9 +400,13 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
 
   function requestTabChange(next: Tab) {
     if (isDirty && next !== "profile") {
-      setPendingResume(() => () => setTab(next));
+      setPendingResume(() => () => {
+        setTab(next);
+        setMobileShowDetail(true);
+      });
     } else {
       setTab(next);
+      setMobileShowDetail(true);
     }
   }
 
@@ -448,8 +457,21 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
         />
       )}
 
-      <div className="w-[300px] shrink-0 border-r border-[var(--color-border)] overflow-y-auto py-4">
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)] px-4 mb-3">Settings</h1>
+      <div
+        className={`${mobileShowDetail ? "hidden" : "flex"} md:flex w-full md:w-[300px] shrink-0 flex-col border-r border-[var(--color-border)] overflow-y-auto py-4 min-h-0`}
+      >
+        <div className="flex items-center gap-2 px-4 mb-3">
+          <button
+            onClick={onClose}
+            className="md:hidden w-11 h-11 -ml-2 shrink-0 flex items-center justify-center rounded-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-signal-blue)]"
+            title="Close settings"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Settings</h1>
+        </div>
 
         <button
           onClick={() => requestTabChange("profile")}
@@ -469,7 +491,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
             <button
               key={item.id}
               onClick={() => requestTabChange(item.id)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 md:py-2.5 min-h-11 text-sm transition ${
                 tab === item.id
                   ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]/60"
@@ -484,7 +506,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
 
           <button
             onClick={handleLogoutClick}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 min-h-11 text-sm text-red-500 hover:bg-red-500/10 transition"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -496,8 +518,22 @@ const SettingsPage = forwardRef<SettingsPageHandle, { onClose: () => void }>(fun
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[560px] mx-auto px-8 py-8">
+      <div className={`${mobileShowDetail ? "flex" : "hidden"} md:flex flex-1 flex-col overflow-y-auto min-h-0 min-w-0`}>
+        <div className="md:hidden flex items-center gap-2 px-4 py-2.5 border-b border-[var(--color-border)] sticky top-0 bg-[var(--color-bg)] z-10 shrink-0">
+          <button
+            onClick={() => setMobileShowDetail(false)}
+            className="w-11 h-11 -ml-2 shrink-0 flex items-center justify-center rounded-full hover:bg-[var(--color-bg-tertiary)] text-[var(--color-signal-blue)]"
+            title="Back to settings"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <span className="text-base font-semibold text-[var(--color-text-primary)] capitalize">
+            {tab === "profile" ? "Profile" : NAV_ITEMS.find((i) => i.id === tab)?.label ?? tab}
+          </span>
+        </div>
+        <div className="max-w-[560px] mx-auto px-4 sm:px-8 py-8 w-full">
           {tab === "profile" && (
             <ProfilePane user={user} draft={draft} onChangeDraft={(patch) => setDraft({ ...draft, ...patch })} />
           )}

@@ -94,8 +94,8 @@ export default function EmojiGifStickerPicker({ onPickEmoji, onPickSticker, onPi
         initial="hidden"
         animate="visible"
         exit="exit"
-        className="absolute bottom-12 right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg w-80 flex flex-col overflow-hidden"
-        style={{ height: 360 }}
+        className="fixed inset-x-2 bottom-16 sm:absolute sm:inset-x-auto sm:bottom-12 sm:right-0 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg w-auto sm:w-80 flex flex-col overflow-hidden"
+        style={{ height: 360, maxHeight: "60vh" }}
       >
         <div className="flex items-center gap-1 px-2 pt-2">
           {(["emoji", "stickers", "gifs"] as Tab[]).map((t) => (

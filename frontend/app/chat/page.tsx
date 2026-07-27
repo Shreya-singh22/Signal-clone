@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
-import NavRail from "@/components/chat/NavRail";
+import NavRail, { MobileNavBar } from "@/components/chat/NavRail";
 import ConversationListPanel from "@/components/chat/ConversationListPanel";
 import ChatPane from "@/components/chat/ChatPane";
 import EmptyState from "@/components/chat/EmptyState";
@@ -69,6 +69,11 @@ export default function ChatShell() {
     setMobileListVisible(false);
   }
 
+  // The mobile bottom tab bar only makes sense on the "list level" screens —
+  // it's hidden once a chat is open full-screen or Settings is showing, so a
+  // small phone gets the full height for whichever full-screen view is active.
+  const showMobileNavBar = !showSettings && (navTab !== "chats" || mobileListVisible);
+
   return (
     <div className="h-full flex">
       <NavRail
@@ -92,57 +97,69 @@ export default function ChatShell() {
         }}
       />
 
-      {showSettings ? (
-        <SettingsPage ref={settingsRef} onClose={() => setShowSettings(false)} />
-      ) : navTab !== "chats" ? (
-        <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)] text-center px-6">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] capitalize">{navTab}</h2>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              {navTab === "calls" ? "Voice and video calls are" : "Stories are"} coming soon to Signal.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className={`${mobileListVisible ? "flex" : "hidden"} sm:flex`}>
-            <ConversationListPanel
-              selectedId={selectedId}
-              onSelect={selectConversation}
-              onNewChat={() => setModal({ type: "newChat" })}
-              onNewGroup={() => setModal({ type: "newGroup" })}
-              onAddContact={() => setModal({ type: "addContact" })}
-            />
-          </div>
-
-          <div className={`${mobileListVisible ? "hidden" : "flex"} sm:flex flex-1 min-w-0`}>
-            {selectedConversation ? (
-              <div className="flex flex-col flex-1 min-w-0">
-                <button
-                  onClick={() => setMobileListVisible(true)}
-                  className="sm:hidden flex items-center gap-1 text-sm text-[var(--color-signal-blue)] px-4 py-2 border-b border-[var(--color-border)]"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                  Chats
-                </button>
-                <ChatPane
-                  key={selectedConversation.id}
-                  conversationId={selectedConversation.id}
-                  onOpenInfo={() => setModal({ type: "chatInfo" })}
-                  onArchived={() => {
-                    setSelectedId(null);
-                    setMobileListVisible(true);
-                  }}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <div className="flex-1 flex min-w-0 min-h-0">
+          {showSettings ? (
+            <SettingsPage ref={settingsRef} onClose={() => setShowSettings(false)} />
+          ) : navTab !== "chats" ? (
+            <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)] text-center px-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)] capitalize">{navTab}</h2>
+                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                  {navTab === "calls" ? "Voice and video calls are" : "Stories are"} coming soon to Signal.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className={`${mobileListVisible ? "flex" : "hidden"} md:flex flex-1 md:flex-none min-w-0 min-h-0`}>
+                <ConversationListPanel
+                  selectedId={selectedId}
+                  onSelect={selectConversation}
+                  onNewChat={() => setModal({ type: "newChat" })}
+                  onNewGroup={() => setModal({ type: "newGroup" })}
+                  onAddContact={() => setModal({ type: "addContact" })}
                 />
               </div>
-            ) : (
-              <EmptyState />
-            )}
-          </div>
-        </>
-      )}
+
+              <div className={`${mobileListVisible ? "hidden" : "flex"} md:flex flex-1 min-w-0 min-h-0`}>
+                {selectedConversation ? (
+                  <div className="flex flex-col flex-1 min-w-0 min-h-0">
+                    <button
+                      onClick={() => setMobileListVisible(true)}
+                      className="md:hidden flex items-center gap-1 min-h-11 text-sm text-[var(--color-signal-blue)] px-4 border-b border-[var(--color-border)]"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                      Chats
+                    </button>
+                    <ChatPane
+                      key={selectedConversation.id}
+                      conversationId={selectedConversation.id}
+                      onOpenInfo={() => setModal({ type: "chatInfo" })}
+                      onArchived={() => {
+                        setSelectedId(null);
+                        setMobileListVisible(true);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <EmptyState />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {showMobileNavBar && (
+          <MobileNavBar
+            active={navTab}
+            onSelect={setNavTab}
+            onOpenSettings={() => setShowSettings(true)}
+          />
+        )}
+      </div>
 
       {modal.type === "newChat" && (
         <NewChatModal onClose={() => setModal({ type: "none" })} onStarted={selectConversation} />

@@ -86,6 +86,9 @@ export default function MessageBubble({
   const [showMenu, setShowMenu] = useState(false);
   const [justReacted, setJustReacted] = useState(false);
   const [justDissolved, setJustDissolved] = useState(false);
+  // Touch has no hover, so the react/reply/more row (normally shown via
+  // group-hover on desktop) is revealed by tapping the bubble on mobile instead.
+  const [actionsRevealed, setActionsRevealed] = useState(false);
   const prevDeletedRef = useRef(message.is_deleted);
 
   // Plays a collapse+fade once when a message transitions to deleted — whether from
@@ -140,6 +143,7 @@ export default function MessageBubble({
 
   function handleBubbleClick() {
     if (selectMode) onToggleSelect();
+    else setActionsRevealed((r) => !r);
   }
 
   function handleDoubleClick() {
@@ -160,7 +164,7 @@ export default function MessageBubble({
           {senderName}
         </span>
       )}
-      <div className={`flex items-center gap-1.5 max-w-[75%] ${isOwn ? "flex-row-reverse" : ""}`}>
+      <div className={`flex items-center gap-1.5 max-w-[85%] md:max-w-[75%] ${isOwn ? "flex-row-reverse" : ""}`}>
         {selectMode && !message.is_deleted && (
           <button
             onClick={onToggleSelect}
@@ -326,10 +330,12 @@ export default function MessageBubble({
         </div>
 
         {!message.is_deleted && !selectMode && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-out flex items-center gap-0.5 relative">
+          <div
+            className={`${actionsRevealed ? "opacity-100" : "opacity-0"} md:group-hover:opacity-100 transition-opacity duration-150 ease-out flex items-center gap-0.5 relative`}
+          >
             <button
               onClick={() => setShowPicker((s) => !s)}
-              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+              className="w-9 h-9 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
               title="React"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -341,7 +347,7 @@ export default function MessageBubble({
             </button>
             <button
               onClick={onReply}
-              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+              className="w-9 h-9 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
               title="Reply"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -351,7 +357,7 @@ export default function MessageBubble({
             </button>
             <button
               onClick={() => setShowMenu((s) => !s)}
-              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+              className="w-9 h-9 md:w-7 md:h-7 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
               title="More"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
@@ -370,7 +376,7 @@ export default function MessageBubble({
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-full shadow-lg px-2 py-1.5 flex gap-1 ${
+                    className={`absolute bottom-11 md:bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-full shadow-lg px-2 py-1.5 flex gap-1 ${
                       isOwn ? "right-0" : "left-0"
                     }`}
                   >
@@ -398,7 +404,7 @@ export default function MessageBubble({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
                 <div
-                  className={`absolute bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 w-44 animate-fade-in-up ${
+                  className={`absolute bottom-11 md:bottom-9 z-20 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-1.5 w-44 animate-fade-in-up ${
                     isOwn ? "right-0" : "left-0"
                   }`}
                 >

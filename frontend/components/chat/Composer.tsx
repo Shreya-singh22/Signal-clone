@@ -215,7 +215,7 @@ export default function Composer({
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading || isEditing || !!pendingAttachment}
           title="Attach file"
-          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-30"
+          className="shrink-0 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition disabled:opacity-30"
         >
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -246,7 +246,7 @@ export default function Composer({
             <button
               type="button"
               onClick={() => setShowEmoji((s) => !s)}
-              className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 transition mb-0.5"
+              className="shrink-0 w-9 h-9 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 transition mb-0.5"
               title="Emoji"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -275,7 +275,7 @@ export default function Composer({
         <button
           type="submit"
           disabled={uploading || (!text.trim() && !pendingAttachment)}
-          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-signal-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-signal-blue-dark)] transition"
+          className="shrink-0 w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center bg-[var(--color-signal-blue)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-signal-blue-dark)] transition"
           title={isEditing ? "Save" : "Send"}
         >
           {isEditing ? (

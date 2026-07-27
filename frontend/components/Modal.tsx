@@ -48,7 +48,7 @@ export default function Modal({ title, onClose, children, width = 420 }: Props) 
               <h2 className="text-base font-semibold text-[var(--color-text-primary)]">{title}</h2>
               <button
                 onClick={requestClose}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition"
+                className="w-11 h-11 md:w-8 md:h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6 6 18" />

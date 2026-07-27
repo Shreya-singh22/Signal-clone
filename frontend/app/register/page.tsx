@@ -74,8 +74,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="h-full flex items-center justify-center bg-[var(--color-bg-secondary)] px-4 overflow-y-auto py-8">
-      <div className="w-full max-w-sm">
+    <div className="h-full flex items-center justify-center bg-[var(--color-bg-secondary)] px-4 sm:px-6 overflow-y-auto py-8">
+      <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-3xl bg-[var(--color-signal-blue)] flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg shadow-blue-500/20">
             S
